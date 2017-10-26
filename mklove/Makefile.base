@@ -1,11 +1,11 @@
 # Base Makefile providing various standard targets
 # Part of mklove suite but may be used independently.
 
-MKL_RED?=	\033[031m
-MKL_GREEN?=	\033[032m
-MKL_YELLOW?=	\033[033m
-MKL_BLUE?=	\033[034m
-MKL_CLR_RESET?=	\033[0m
+MKL_RED=\033[031m
+MKL_GREEN=\033[032m
+MKL_YELLOW=\033[033m
+MKL_BLUE=\033[034m
+MKL_CLR_RESET=\033[0m
 
 DEPS=		$(OBJS:%.o=%.d)
 
@@ -18,15 +18,6 @@ TOPDIR = $(MKLOVE_DIR:mklove/=.)
 ARFLAGS=
 
 -include $(TOPDIR)/Makefile.config
-
-_UNAME_S := $(shell uname -s)
-ifeq ($(_UNAME_S),Darwin)
-	LIBFILENAME=$(LIBNAME).$(LIBVER).dylib
-	LIBFILENAMELINK=$(LIBNAME).dylib
-else
-	LIBFILENAME=$(LIBNAME).so.$(LIBVER)
-	LIBFILENAMELINK=$(LIBNAME).so
-endif
 
 INSTALL?=		install
 INSTALL_PROGRAM?=	$(INSTALL)
@@ -62,7 +53,7 @@ man8dir?=	$(mandir)/man8
 # Checks that mklove is set up and ready for building
 mklove-check:
 	@if [ ! -f "$(TOPDIR)/Makefile.config" ]; then \
-		printf "$(MKL_RED)$(TOPDIR)/Makefile.config missing: please run ./configure$(MKL_CLR_RESET)\n" ; \
+	 	echo "$(MKL_RED)$(TOPDIR)/Makefile.config missing: please run ./configure$(MKL_CLR_RESET)" ; \
 		exit 1 ; \
 	fi
 
@@ -73,63 +64,63 @@ mklove-check:
 	$(CXX) -MD -MP $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 
-lib: $(LIBFILENAME) $(LIBNAME).a
+lib: $(LIBNAME).so.$(LIBVER) $(LIBNAME).a
 
-$(LIBFILENAME): $(OBJS) $(LIBNAME).lds
-	@printf "$(MKL_YELLOW)Creating shared library $@$(MKL_CLR_RESET)\n"
+$(LIBNAME).so.$(LIBVER): $(OBJS) $(LIBNAME).lds
+	@echo "$(MKL_YELLOW)Creating shared library $@$(MKL_CLR_RESET)"
 	$(CC) $(LDFLAGS) $(LIB_LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 $(LIBNAME).a:	$(OBJS)
-	@printf "$(MKL_YELLOW)Creating static library $@$(MKL_CLR_RESET)\n"
+	@echo "$(MKL_YELLOW)Creating static library $@$(MKL_CLR_RESET)"
 	$(AR) rcs$(ARFLAGS) $@ $(OBJS)
 
 
 $(BIN): $(OBJS)
-	@printf "$(MKL_YELLOW)Creating program $@$(MKL_CLR_RESET)\n"
+	@echo "$(MKL_YELLOW)Creating program $@$(MKL_CLR_RESET)"
 	$(CC) $(CPPFLAGS) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 
 file-check:
-	@printf "$(MKL_YELLOW)Checking $(LIBNAME) integrity$(MKL_CLR_RESET)\n"
-	@RET=true ; \
-	for f in $(CHECK_FILES) ; do \
+	@(echo "$(MKL_YELLOW)Checking $(LIBNAME) integrity$(MKL_CLR_RESET)" ; \
+	 RET=true ; \
+	 for f in $(CHECK_FILES) ; do \
 		printf "%-30s " $$f ; \
 		if [ -f "$$f" ]; then \
-			printf "$(MKL_GREEN)OK$(MKL_CLR_RESET)\n" ; \
+			echo "$(MKL_GREEN)OK$(MKL_CLR_RESET)"; \
 		else \
-			printf "$(MKL_RED)MISSING$(MKL_CLR_RESET)\n" ; \
+			echo "$(MKL_RED)MISSING$(MKL_CLR_RESET)"; \
 			RET=false ; \
-		fi ; \
+		fi; \
 	done ; \
-	$$($$RET)
+	$$($$RET))
 
 
 lib-install:
-	@printf "$(MKL_YELLOW)Install $(LIBNAME) to $$DESTDIR$(prefix)$(MKL_CLR_RESET)\n"
+	@echo "$(MKL_YELLOW)Install $(LIBNAME) to $$DESTDIR$(prefix)$(MKL_CLR_RESET)"
 	$(INSTALL) -d $$DESTDIR$(includedir)/$(PKGNAME) ; \
 	$(INSTALL) -d $$DESTDIR$(libdir) ; \
 	$(INSTALL) $(HDRS) $$DESTDIR$(includedir)/$(PKGNAME) ; \
 	$(INSTALL) $(LIBNAME).a $$DESTDIR$(libdir) ; \
-	$(INSTALL) $(LIBFILENAME) $$DESTDIR$(libdir) ; \
-	(cd $$DESTDIR$(libdir) && ln -sf $(LIBFILENAME) $(LIBFILENAMELINK))
+	$(INSTALL) $(LIBNAME).so.$(LIBVER) $$DESTDIR$(libdir) ; \
+	(cd $$DESTDIR$(libdir) && ln -sf $(LIBNAME).so.$(LIBVER) $(LIBNAME).so)
 
 lib-uninstall:
-	@printf "$(MKL_YELLOW)Uninstall $(LIBNAME) from $$DESTDIR$(prefix)$(MKL_CLR_RESET)\n"
+	@echo "$(MKL_YELLOW)Uninstall $(LIBNAME) from $$DESTDIR$(prefix)$(MKL_CLR_RESET)"
 	for hdr in $(HDRS) ; do \
 		rm -f $$DESTDIR$(includedir)/$(PKGNAME)/$$hdr ; done
 	rm -f $$DESTDIR$(libdir)/$(LIBNAME).a
-	rm -f $$DESTDIR$(libdir)/$(LIBFILENAME)
-	rm -f $$DESTDIR$(libdir)/$(LIBFILENAMELINK)
+	rm -f $$DESTDIR$(libdir)/$(LIBNAME).so.$(LIBVER)
+	rm -f $$DESTDIR$(libdir)/$(LIBNAME).so
 	rmdir $$DESTDIR$(includedir)/$(PKGNAME) || true
 
 
 bin-install:
-	@printf "$(MKL_YELLOW)Install $(BIN) to $$DESTDIR$(prefix)$(MKL_CLR_RESET)\n"
+	@echo "$(MKL_YELLOW)Install $(BIN) to $$DESTDIR$(prefix)$(MKL_CLR_RESET)"
 	$(INSTALL) -d $$DESTDIR$(bindir) && \
 	$(INSTALL) $(BIN) $$DESTDIR$(bindir) 
 
 bin-uninstall:
-	@printf "$(MKL_YELLOW)Uninstall $(BIN) from $$DESTDIR$(prefix)$(MKL_CLR_RESET)\n"
+	@echo "$(MKL_YELLOW)Uninstall $(BIN) from $$DESTDIR$(prefix)$(MKL_CLR_RESET)"
 	rm -f $$DESTDIR$(bindir)/$(BIN)
 
 
@@ -137,7 +128,7 @@ generic-clean:
 	rm -f $(OBJS) $(DEPS)
 
 lib-clean: generic-clean
-	rm -f $(LIBNAME)*.a $(LIBFILENAME) $(LIBFILENAMELINK) \
+	rm -f $(LIBNAME)*.a $(LIBNAME)*.so $(LIBNAME)*.so.$(LIBVER) \
 		$(LIBNAME).lds
 
 bin-clean: generic-clean

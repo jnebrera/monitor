@@ -9,7 +9,7 @@ OBJS = $(SRCS:.c=.o)
 TESTS_C = $(sort $(wildcard tests/0*.c))
 
 TESTS = $(TESTS_C:.c=.test)
-OBJ_DEPS_TESTS := tests/json_test.o tests/sensor_test.o
+OBJ_DEPS_TESTS := tests/json_test.o tests/sensor_test.o tests/snmp_test.o
 TESTS_OBJS = $(TESTS:.test=.o)
 TESTS_CHECKS_XML = $(TESTS_C:.c=.xml)
 TESTS_MEM_XML = $(TESTS_C:.c=.mem.xml)
@@ -88,10 +88,12 @@ tests/%.xml: tests/%.test
 	@echo "$(MKL_YELLOW) Generating $@$(MKL_CLR_RESET)"
 	@CMOCKA_XML_FILE="$@" CMOCKA_MESSAGE_OUTPUT=XML "./$<" >/dev/null 2>&1
 
+tests/%.o: CPPFLAGS := $(filter-out -flto,$(CPPFLAGS))
 tests/%.test: CPPFLAGS := -I. $(CPPFLAGS)
 MALLOC_FUNCTIONS := $(strip malloc calloc __strdup strdup \
 	json_object_new_object printbuf_new evaluator_create \
-	json_object_new_string json_object_new_int64)
+	json_object_new_string json_object_new_int64 snmp_sess_synch_response \
+	snmp_free_pdu)
 WRAP_ALLOC_FUNCTIONS := $(foreach fn, $(MALLOC_FUNCTIONS)\
 						,-Wl,-u,$(fn) -Wl,-wrap,$(fn))
 tests/%.test: tests/%.o $(filter-out src/main.o,$(OBJS)) $(OBJ_DEPS_TESTS)
