@@ -25,11 +25,168 @@ mkl_toggle_option "Standard" WITH_ZOOKEEPER "--enable-zookeeper"   "Apache Zooke
 mkl_toggle_option "Standard" WITH_RBHTTP    "--enable-rbhttp"      "redBorder HTTP library to send monitors over POST messages" "n"
 mkl_toggle_option "Debug" WITH_COVERAGE "--enable-coverage" "Coverage build" "n"
 
+LIBRD_COMMIT=bb4ec7e65c8d3d411837e506e8d02f293b9a0a20
+function bootstrap_librd {
+  if [[ -d "librd" ]]; then
+    # Already bootstrapped
+    return 0
+  fi
+
+  mv "librd-${LIBRD_COMMIT}" librd
+  cd librd
+  if [[ $HAVE_LTO = 'y' ]]; then
+    local -r cflag_lto='-flto'
+    local -r ar_lto='gcc-ar'
+    local -r ld_lto='gcc'
+    sed -i 's%-soname%-Wl,-soname%' Makefile
+  fi
+  CC=gcc CFLAGS="$cflag_lto" AR="$ar_lto" LD="$ld_lto" make libs
+}
+
+function checks_librd {
+  mkl_meta_set "librd" "desc" "Magnus Edenhill lib for rapid development"
+  mkl_meta_set "librd" "bootstrap_url" "https://github.com/eugpermar/librd/archive/${LIBRD_COMMIT}.zip"
+  mkl_meta_set "librd" "bootstrap_cppflags" "-I./vendor/librd"
+  mkl_meta_set "librd" "bootstrap_static_lib" "vendor/librd/librd/librd.a"
+  mkl_meta_set "librd" "bootstrap_makefn" "bootstrap_librd"
+
+  mkl_lib_check --static=-lrd "librd" "" fail CC "-lrd -lpthread -lz -lrt" \
+       "#include <librd/rd.h>"
+}
+
+
+JSON_C_VERSION=0.12.1-20160607
+function bootstrap_json_c {
+  if [[ -d "json-c" ]]; then
+    # Already bootstrapped
+    return 0
+  fi
+
+  mv "json-c-json-c-${JSON_C_VERSION}" json-c
+  cd json-c
+  if [[ $HAVE_LTO = 'y' ]]; then
+    local -r cflag_lto='-flto'
+    local -r ar_lto='gcc-ar'
+    local -r ld_lto='gcc'
+    local -r ranlib_lto='gcc-ranlib'
+  fi
+
+  CC=gcc CFLAGS="$cflag_lto" AR="$ar_lto" LD="$ld_lto" RANLIB="$ranlib_lto" \
+    ./configure
+  make
+}
+
+function checks_json_c {
+  mkl_meta_set "json_c" "desc" "A JSON implementation in C"
+  mkl_meta_set "json_c" "bootstrap_url" "https://github.com/json-c/json-c/archive/json-c-${JSON_C_VERSION}.tar.gz"
+  mkl_meta_set "json_c" "bootstrap_cppflags" "-I./vendor/json_c"
+  mkl_meta_set "json_c" "bootstrap_static_lib" "./vendor/json_c/json-c/.libs/libjson-c.a"
+  mkl_meta_set "json_c" "bootstrap_makefn" "bootstrap_json_c"
+
+  mkl_lib_check --static=-ljson-c "json_c" '' fail CC "-ljson-c" \
+        "#include <json-c/json.h>"
+}
+
+
+LIBMATHEVAL_VERSION=1.1.11
+function bootstrap_libmatheval {
+  if [[ -d "libmatheval" ]]; then
+    # Already bootstrapped
+    return 0
+  fi
+
+  mv "libmatheval-${LIBMATHEVAL_VERSION}" libmatheval
+  cd libmatheval
+  if [[ $HAVE_LTO = 'y' ]]; then
+    local -r cflag_lto='-flto'
+    local -r ar_lto='gcc-ar'
+    local -r ld_lto='gcc'
+    local -r ranlib_lto='gcc-ranlib'
+  fi
+
+  CC=gcc CFLAGS="$cflag_lto" CPPFLAGS='-DSCM_ENABLE_DEPRECATED=1' AR="$ar_lto" LD="$ld_lto" RANLIB="$ranlib_lto" \
+    ./configure
+  (cd lib; make)  # Skip tests
+}
+
+function checks_libmatheval {
+  mkl_meta_set "libmatheval" "desc" "Parser and evaluator of symbolic expressions"
+  mkl_meta_set "libmatheval" "bootstrap_url" "https://ftp.gnu.org/gnu/libmatheval/libmatheval-${LIBMATHEVAL_VERSION}.tar.gz"
+  mkl_meta_set "libmatheval" "bootstrap_cppflags" "-I./vendor/libmatheval/libmatheval/lib"
+  mkl_meta_set "libmatheval" "bootstrap_static_lib" "./vendor/libmatheval/libmatheval/lib/.libs/libmatheval.a"
+  mkl_meta_set "libmatheval" "bootstrap_makefn" "bootstrap_libmatheval"
+
+  mkl_lib_check --static=-lmatheval "libmatheval" "" fail CC "-lmatheval" \
+       "#include <matheval.h>"
+}
+
+
+FLEX_VERSION=2.6.4
+function bootstrap_flex {
+  if [[ -d "flex" ]]; then
+    # Already bootstrapped
+    return 0
+  fi
+
+  mv "flex-${FLEX_VERSION}" flex
+  cd flex
+  if [[ $HAVE_LTO = 'y' ]]; then
+    local -r cflag_lto='-flto'
+    local -r ar_lto='gcc-ar'
+    local -r ld_lto='gcc'
+    local -r ranlib_lto='gcc-ranlib'
+  fi
+
+  CC=gcc CFLAGS="$cflag_lto" AR="$ar_lto" LD="$ld_lto" RANLIB="$ranlib_lto" \
+    ./configure
+  make
+}
+
+function checks_flex {
+  mkl_meta_set "flex" "desc" "The Fast Lexical Analyzer"
+  mkl_meta_set "flex" "bootstrap_url" "https://github.com/westes/flex/releases/download/v${FLEX_VERSION}/flex-${FLEX_VERSION}.tar.gz"
+  mkl_meta_set "flex" "bootstrap_cppflags" "-I./vendor/flex/flex/lib"
+  mkl_meta_set "flex" "bootstrap_static_lib" "./vendor/flex/flex/src/.libs/libfl.a"
+  mkl_meta_set "flex" "bootstrap_makefn" "bootstrap_flex"
+
+  mkl_lib_check --static=-lfl "flex" "" fail CC "-lfl" "void *f(); void *f(){return f;}"
+}
+
+
+NET_SNMP_VERSION=5.7.3
+function bootstrap_net_snmp {
+  if [[ -d "net_snmp" ]]; then
+    # Already bootstrapped
+    return 0
+  fi
+
+  configure_opts='--disable-agent --disable-applications --disable-manuals'
+  configure_opts="$configure_opts --disable-scripts"
+  configure_opts="$configure_opts --with-default-snmp-version=3"
+  configure_opts="$configure_opts --with-sys-contact='who@where'"
+  configure_opts="$configure_opts --with-sys-location='location'"
+  configure_opts="$configure_opts --with-logfile='/dev/null'"
+  configure_opts="$configure_opts --with-persistent-directory='/var/net-snmp'"
+
+  mv "net-snmp-${NET_SNMP_VERSION}" net_snmp
+  cd net_snmp
+  if [[ $HAVE_LTO = 'y' ]]; then
+    local -r cflag_lto='-flto'
+    local -r ar_lto='gcc-ar'
+    local -r ld_lto='gcc'
+    local -r ranlib_lto='gcc-ranlib'
+  fi
+
+  CC=gcc CFLAGS="$cflag_lto" CPPFLAGS='' AR="$ar_lto" LD="$ld_lto" RANLIB="$ranlib_lto" \
+    ./configure $configure_opts
+  make
+}
+
 # Check for snmp library
 # Arg1: Name
 # Arg2: -l<> flags
 # Arg3: fail / cont
-function check_snmp {
+function check_snmp0 {
     DISPLAY_NAME=$1
     SNMP_LDFLAG=$2
     ACTION=$3
@@ -38,40 +195,42 @@ function check_snmp {
        #include <net-snmp/net-snmp-includes.h>"
 }
 
+function check_snmp {
+    mkl_meta_set "net_snmp" "desc" "libraries relating to SNMP"
+    check_snmp0 "net_snmp" -lsnmp "cont"
+    if [[ "x$HAVE_NET_SNMP" != "xy" ]]; then
+        # Centos >6
+        # Provide bootstrap instructions in case of failure
+        mkl_meta_set "net_snmp" "bootstrap_url" "https://sourceforge.net/projects/net-snmp/files/net-snmp/${NET_SNMP_VERSION}/net-snmp-${NET_SNMP_VERSION}.tar.gz"
+        # Need to add
+        mkl_meta_set "net_snmp" "bootstrap_cppflags" "-DHAVE_DMALLOC_H=0 -I./vendor/net_snmp/net_snmp/include"
+        mkl_meta_set "net_snmp" "bootstrap_static_lib" "./vendor/net_snmp/net_snmp/snmplib/.libs/libnetsnmp.a"
+        mkl_meta_set "net_snmp" "bootstrap_makefn" "bootstrap_net_snmp"
+
+        check_snmp0 "net_snmp" -lnetsnmp "fail"
+    fi
+}
+
 function checks {
     mkl_define_set "OS name" "osName" "`uname`"
 
-    mkl_lib_check "librd" "" fail CC "-lrd -lpthread -lz -lrt"
-
-    mkl_lib_check pthread HAVE_LIBPTHREAD fail CC "-lpthread" \
+    mkl_lib_check pthread '' fail CC "-lpthread" \
         "#include <pthread.h>
          void *f();void *f(){return pthread_mutex_init;}"
+    mkl_lib_check --static=-lm "libmath" "" fail CC "-lm" \
+       "#include <math.h>"
 
-    mkl_lib_check json HAVE_JSON_C fail CC "-ljson-c" \
-        "#include <json-c/json.h>"
+    checks_librd
+    checks_json_c
+    checks_flex
+    checks_libmatheval
+    check_snmp
 
     # Check that librdkafka is available, and allow to link it statically.
     mkl_meta_set "librdkafka" "desc" "librdkafka is available at http://github.com/edenhill/librdkafka."
     mkl_meta_set "librdkafka" "deb" "librdkafka-dev"
     mkl_lib_check --static=-lrdkafka "librdkafka" "" fail CC "-lrdkafka -lpthread -lz" \
        "#include <librdkafka/rdkafka.h>"
-
-    mkl_meta_set "librd" "desc" "librd is available at http://github.com/edenhill/librd."
-    mkl_meta_set "librd" "deb" "librdkafka-dev"
-    mkl_lib_check --static=-lrd "librd" "" fail CC "-lrd -lrt -lz" \
-       "#include <librd/rd.h>"
-
-    mkl_lib_check --static=-lm "libmath" "" fail CC "-lm" \
-       "#include <math.h>"
-
-    mkl_lib_check --static=-lmatheval "libmatheval" "" fail CC "-lmatheval" \
-       "#include <matheval.h>"
-
-    check_snmp "net_snmp" -lsnmp "cont"
-    if [[ "x$HAVE_NET_SNMP" != "xy" ]]; then
-        # Centos >6
-        check_snmp "net_snmp" -lnetsnmp "fail"
-    fi
 
     # Optionals libs
     mkl_meta_set "zookeeper" "desc" "Zookeeper development libraries"

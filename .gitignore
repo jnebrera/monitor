@@ -48,3 +48,4 @@ tests/*.xml
 /config.log
 /config.log.old
 /rb_monitor
+/vendor/

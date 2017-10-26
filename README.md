@@ -272,6 +272,21 @@ configure options with `configure --help`. The most important are:
 * `--enable-zookeeper`, that allows to get monitors requests using zookeeper
 * `--enable-rbhttp`, to send monitors via HTTP POST instead of kafka.
 
+### Dependencies
+In order to compile `rb_monitor` you need to satisfy these dependencies:
+- librd
+- librdkafka
+- json_c
+- libmatheval
+- net_snmp
+
+`configure` script can download and install it for you if you use `--bootstrap`
+option, except for librdkafka, but then you need these (more commons) deps:
+
+- *librd*: C standard lib devel (for phtreads and librt)
+- *libmatheval*: flex and bison. If you don't have flex, it will be bootstrapped
+  too, but you need `m4`
+
 ## TODO
 - [ ] Vector <op> scalar operation (see #14 )
 - [ ] SNMP tables / array (see #15 )
