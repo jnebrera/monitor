@@ -43,7 +43,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
-#include <math.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -52,6 +51,8 @@
 #ifndef NDEBUG
 #include <ctype.h>
 #endif
+
+#include "version.h"
 
 static const char CONFIG_RDKAFKA_KEY[] = "rdkafka.";
 static const char CONFIG_ZOOKEEPER_KEY[] = "zookeeper";
@@ -674,6 +675,42 @@ parse_sensors(struct _worker_info *worker_info, struct json_object *config) {
 	return ret;
 }
 
+static void print_lib_versions(void) {
+#define STRINGIFY0(x) #x
+#define STRINGIFY(x) STRINGIFY0(x)
+
+#ifdef LIBMATHEVAL_VERSION
+	rdlog(LOG_INFO,
+	      "Compiled & running with librd version " STRINGIFY(
+			      LIBRD_VERSION));
+#endif
+
+	rdlog(LOG_INFO,
+	      "Compiled with json-c version %s, running with %s",
+	      STRINGIFY(JSON_C_VERSION),
+	      json_c_version());
+
+	rdlog(LOG_INFO,
+	      "Compiled with net_snmp version %s, running with %s",
+#ifdef NET_SNMP_VERSION
+	      STRINGIFY(NET_SNMP_VERSION),
+#else
+	      "(unknown)",
+#endif
+	      netsnmp_get_version());
+
+#ifdef LIBMATHEVAL_VERSION
+	rdlog(LOG_INFO,
+	      "Compiled & running with libmatheval "
+	      "version " STRINGIFY(LIBMATHEVAL_VERSION));
+#endif
+
+	rdlog(LOG_INFO,
+	      "Compiled with librdkafka version %X, running with %s",
+	      RD_KAFKA_VERSION,
+	      rd_kafka_version_str());
+}
+
 int main(int argc, char *argv[]) {
 	bool ret;
 	char *config_path = NULL;
@@ -697,6 +734,9 @@ int main(int argc, char *argv[]) {
 	assert(default_config);
 
 	worker_info.queue = &queue;
+
+	print_lib_versions();
+	rdlog(LOG_INFO, "rb_monitor version %s", monitor_version);
 
 	assert(default_config);
 	ret = parse_json_config(default_config, &worker_info, &main_info);

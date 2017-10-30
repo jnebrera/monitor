@@ -49,3 +49,6 @@ tests/*.xml
 /config.log.old
 /rb_monitor
 /vendor/
+
+# Versions
+/src/version.h

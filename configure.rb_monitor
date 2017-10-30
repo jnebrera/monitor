@@ -46,7 +46,7 @@ function bootstrap_librd {
 function checks_librd {
   mkl_meta_set "librd" "desc" "Magnus Edenhill lib for rapid development"
   mkl_meta_set "librd" "bootstrap_url" "https://github.com/eugpermar/librd/archive/${LIBRD_COMMIT}.zip"
-  mkl_meta_set "librd" "bootstrap_cppflags" "-I./vendor/librd"
+  mkl_meta_set "librd" "bootstrap_cppflags" "-DLIBRD_VERSION=${LIBRD_COMMIT} -I./vendor/librd"
   mkl_meta_set "librd" "bootstrap_static_lib" "vendor/librd/librd/librd.a"
   mkl_meta_set "librd" "bootstrap_makefn" "bootstrap_librd"
 
@@ -112,7 +112,7 @@ function bootstrap_libmatheval {
 function checks_libmatheval {
   mkl_meta_set "libmatheval" "desc" "Parser and evaluator of symbolic expressions"
   mkl_meta_set "libmatheval" "bootstrap_url" "https://ftp.gnu.org/gnu/libmatheval/libmatheval-${LIBMATHEVAL_VERSION}.tar.gz"
-  mkl_meta_set "libmatheval" "bootstrap_cppflags" "-I./vendor/libmatheval/libmatheval/lib"
+  mkl_meta_set "libmatheval" "bootstrap_cppflags" "-DLIBMATHEVAL_VERSION=${LIBMATHEVAL_VERSION} -I./vendor/libmatheval/libmatheval/lib"
   mkl_meta_set "libmatheval" "bootstrap_static_lib" "./vendor/libmatheval/libmatheval/lib/.libs/libmatheval.a"
   mkl_meta_set "libmatheval" "bootstrap_makefn" "bootstrap_libmatheval"
 
@@ -203,7 +203,7 @@ function check_snmp {
         # Provide bootstrap instructions in case of failure
         mkl_meta_set "net_snmp" "bootstrap_url" "https://sourceforge.net/projects/net-snmp/files/net-snmp/${NET_SNMP_VERSION}/net-snmp-${NET_SNMP_VERSION}.tar.gz"
         # Need to add
-        mkl_meta_set "net_snmp" "bootstrap_cppflags" "-DHAVE_DMALLOC_H=0 -I./vendor/net_snmp/net_snmp/include"
+        mkl_meta_set "net_snmp" "bootstrap_cppflags" "-DNET_SNMP_VERSION=${NET_SNMP_VERSION} -DHAVE_DMALLOC_H=0 -I./vendor/net_snmp/net_snmp/include"
         mkl_meta_set "net_snmp" "bootstrap_static_lib" "./vendor/net_snmp/net_snmp/snmplib/.libs/libnetsnmp.a"
         mkl_meta_set "net_snmp" "bootstrap_makefn" "bootstrap_net_snmp"
 

@@ -7,6 +7,7 @@ SRCS = $(addprefix src/, \
 	rb_sensor_monitor_array.c rb_message_list.c rb_libmatheval.c rb_json.c)
 OBJS = $(SRCS:.c=.o)
 TESTS_C = $(sort $(wildcard tests/0*.c))
+VERSION_H = src/version.h
 
 TESTS = $(TESTS_C:.c=.test)
 OBJ_DEPS_TESTS := tests/json_test.o tests/sensor_test.o tests/snmp_test.o
@@ -26,20 +27,30 @@ ifneq ($(wildcard $(SUPPRESSIONS_FILE)),)
 SUPPRESSIONS_VALGRIND_ARG = --suppressions=$(SUPPRESSIONS_FILE)
 endif
 
-.PHONY: version.c tests checks memchecks drdchecks helchecks coverage \
-	check_coverage clang-format-check
-
-all: $(BIN)
+all: $(VERSION_H) $(BIN)
 
 include mklove/Makefile.base
 
-version.c:
-	@rm -f $@
-	@echo "const char *nprobe_revision=\"`git describe --abbrev=6 --tags HEAD --always`\";" >> $@
-	@echo "const char *version=\"6.13.`date +"%y%m%d"`\";" >> $@
+# Update binary version if needed
+actual_git_version:=$(shell git describe --abbrev=6 --tags HEAD --always)
+ifneq (,$(wildcard $(VERSION_H)))
+version_c_version:=$(shell sed -n 's/.*n2kafka_version="\([^"]*\)";/\1/p' -- $(VERSION_H))
+endif
+
+# Re-make $(VERSION_H) if git version changed
+ifneq (,$(filter-out $(actual_git_version),$(GITVERSION) $(version_c_version)))
+VERSION_H_PHONY=$(VERSION_H)
+endif
+
+.PHONY: tests checks memchecks drdchecks helchecks coverage \
+	check_coverage clang-format-check $(VERSION_H_PHONY)
+
+$(VERSION_H):
+	@echo "static const char *monitor_version=\"$(actual_git_version)\";" > $@
 
 clean: bin-clean
-	rm -f $(TESTS) $(TESTS_OBJS) $(TESTS_XML) $(COV_FILES) $(OBJ_DEPS_TESTS)
+	rm -f $(TESTS) $(TESTS_OBJS) $(TESTS_XML) $(COV_FILES) $(OBJ_DEPS_TESTS) \
+		$(VERSION_H)
 
 install: bin-install
 
