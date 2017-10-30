@@ -21,7 +21,7 @@
 
 #include "rb_message_list.h"
 
-#include <json/json.h>
+#include <json-c/json.h>
 #include <sys/queue.h>
 
 /// Convenience wrapper to create a json test object
