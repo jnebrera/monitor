@@ -1,0 +1,20 @@
+# Coverage files
+*.gcno
+*.gcda
+coverage.*
+
+# Source files
+Makefile
+Makefile*
+README.md
+/config.*
+configure*
+
+/example_configs
+/mklove
+
+/src
+/tests
+/vendor/
+!/vendor/net_snmp/net_snmp/mibs/
+

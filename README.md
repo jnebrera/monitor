@@ -287,6 +287,13 @@ option, except for librdkafka, but then you need these (more commons) deps:
 - *libmatheval*: flex and bison. If you don't have flex, it will be bootstrapped
   too, but you need `m4`
 
+## Docker
+You can generate a development docker container with `make dev-docker`, with a
+ready to use environment to compile and test rb_monitor. Also, you can generate
+a release docker container with `make docker`, but make sure that you compiled
+properly `rb_monitor`, i.e., with optimizations, no coverage generation
+information, etc etc.
+
 ## TODO
 - [ ] Vector <op> scalar operation (see #14 )
 - [ ] SNMP tables / array (see #15 )

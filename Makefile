@@ -135,4 +135,44 @@ coverage: check_coverage $(TESTS)
 rpm: clean
 	$(MAKE) -C packaging/rpm
 
+DOCKER_OUTPUT_TAG?=gcr.io/wizzie-registry/rb_monitor
+DOCKER_OUTPUT_VERSION?=1.1.0-rc
+
+vendor_net_snmp_mib_dir=vendor/net_snmp/net_snmp/mibs
+vendor_net_snmp_mib_makefile=$(vendor_net_snmp_mib_dir)/Makefile.mib
+# If we have used net-snmp vendors, we will use it to update SNMP
+ifneq (,$(wildcard $(vendor_net_snmp_mib_makefile)))
+SHELL := /bin/bash
+mibs_deps=$(addprefix $(vendor_net_snmp_mib_dir)/, \
+                      $(shell make -f $(vendor_net_snmp_mib_makefile) \
+                          -f <(echo -e "print-MIBS:\n\t@echo \$$(MIBS)") \
+                          print-MIBS))
+endif
+
+# else, we will use system default
+ifeq (,$(mibs_deps))
+mibs_deps=$(wildcard /usr/local/share/snmp/mibs/*.txt)
+endif
+
+DOCKER_RELEASE_FILES=$(strip rb_monitor docker/release/config.json.env \
+	docker/release/monitor_setup.sh)
+
+$(vendor_net_snmp_mib_dir)/%.txt:
+	cd $(vendor_net_snmp_mib_dir); make "$(notdir $@)"
+
+docker: docker/release/Dockerfile \
+		$(filter-out rb_monitor,$(DOCKER_RELEASE_FILES)) \
+		$(mibs_deps)
+	docker build -t $(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION) \
+		-f docker/release/Dockerfile .
+
+dev-docker: docker/devel/Dockerfile
+	@docker build $(DOCKER_BUILD_PARAMETERS) docker/devel
+
+docker/release/Dockerfile:RELEASEFILES_ARG=--define=releasefiles='$(DOCKER_RELEASE_FILES)'
+docker/release/Dockerfile:MIBS_ARG=--define=mibfiles='$(mibs_deps)'
+%/Dockerfile: docker/Dockerfile.m4
+	mkdir -p "$(dir $@)"
+	m4 $(RELEASEFILES_ARG) $(MIBS_ARG) --define=version="$(@:docker/%/Dockerfile=%)" "$<" > "$@"
+
 -include $(DEPS)
