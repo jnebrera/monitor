@@ -1,6 +1,4 @@
-[![Build Status](https://travis-ci.org/redBorder/rb_monitor.svg?branch=master)](https://travis-ci.org/redBorder/rb_monitor)
-[![Coverity Scan Build Status](https://scan.coverity.com/projects/10570/badge.svg)](https://scan.coverity.com/projects/redborder-rb_monitor)
-[![Coverage Status](https://coveralls.io/repos/github/redBorder/rb_monitor/badge.svg?branch=master)](https://coveralls.io/github/redBorder/rb_monitor?branch=redborder)
+[![CircleCI](https://circleci.com/gh/wizzie-io/rb_monitor.svg?style=svg&circle-token=22d517d1196fe8208eedd8341cf4c06e3f6fbeab)](https://circleci.com/gh/wizzie-io/rb_monitor)
 
 # rb_monitor
 

@@ -1,0 +1,22 @@
+version: 2
+jobs:
+    build:
+      machine: true
+      hosts:
+        kafka: 127.0.0.1
+
+      steps:
+        - checkout
+        # Don't want thread-safety test because musl bug
+        - run: sed -i 's%\$(TESTS_\(DRD\|HELGRIND\)_XML)%%g' Makefile
+        # Bug caused by LTO, mem checks are impossible & unknown failure
+        - run: rm -f tests/0013-mem.c tests/0005-monitors_split_op_blanks.c
+        # Build kafka container
+        - run: docker run -d --name kafka --add-host=kafka:127.0.0.1 --env ADVERTISED_HOST=kafka --env ADVERTISED_PORT=9092 spotify/kafka
+        # Create development docker
+        - run:
+            environment:
+              DOCKER_BUILD_PARAMETERS: -t monitor-dev --rm=false
+            command: make dev-docker
+        # Run test
+        - run: ./tests/circle-test.sh "$CIRCLE_ARTIFACTS/O2" "--bootstrap"

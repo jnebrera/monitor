@@ -11,9 +11,12 @@ RUN apk add --no-cache librdkafka jansson zlib
 # n2k libraries
 RUN apk add --no-cache yajl libmicrohttpd libev
 
+# ca-certificates: for wget bootstrapping
+# ncurses - expat: deps for xml-coreutils
 define(builddeps,bash build-base ca-certificates librdkafka-dev \
 		libarchive-tools zlib-dev openssl cgdb valgrind \
-		bsd-compat-headers git m4 file guile-dev cmocka-dev)dnl
+		bsd-compat-headers git m4 file guile-dev cmocka-dev \
+		ncurses-dev expat-dev slang-dev)dnl
 dnl
 ifelse(version,devel,
 RUN apk add --no-cache builddeps && \
@@ -24,15 +27,11 @@ RUN apk add --no-cache builddeps && \
 	wget -q -O - \
 		https://github.com/eugpermar/xml-coreutils/archive/master.zip \
 		| bsdtar -xf- && \
-		(cd xml-coreutils-master; bash ./configure --prefix=/usr/local \
-			; make; make install) && \
+		(cd xml-coreutils-master; bash ./configure --prefix=/usr/local; \
+			chmod +x config/install-sh; make; make install) && \
 		rm -rfv xml-coreutils-master,
 COPY releasefiles /app/
 COPY mibfiles /usr/local/share/snmp/mibs/
 ENTRYPOINT /app/monitor_setup.sh)
-
-
-# ca-certificates: for wget bootstrapping
-# ncurses - expat: deps for xml-coreutils
 
 WORKDIR /app
