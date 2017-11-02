@@ -52,7 +52,7 @@
 #include <ctype.h>
 #endif
 
-#include "version.h"
+#include "src/version.h"
 
 static const char CONFIG_RDKAFKA_KEY[] = "rdkafka.";
 static const char CONFIG_ZOOKEEPER_KEY[] = "zookeeper";
