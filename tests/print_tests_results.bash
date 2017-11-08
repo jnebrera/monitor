@@ -8,12 +8,12 @@ TOTAL_HELGRIND_ERRORS=0              # Errors detected with helgrind tool
 TOTAL_DRD_ERRORS=0                   # Errors detected with drd
 
 # Count number of XML elements that match with string $2 in file $1
-function count_xml_elms {
+count_xml_elms () {
   xml-find $1 -name $2 | wc -l
 }
 
 # Extract valgrind error text $2 of file $1
-function valgrind_xml_error_text {
+valgrind_xml_error_text () {
   TEXT="$(xml-printf '%s' $1 ://error[$2]/what 2>/dev/null)"
   if [[ -z "$TEXT" ]]; then
     TEXT="$(xml-printf '%s' $1 ://error[$2]/xwhat/text 2>/dev/null)"
@@ -21,7 +21,12 @@ function valgrind_xml_error_text {
   echo "$TEXT"
 }
 
-TITLE="RUNNING TESTS"
+readonly XML_COREUTILS_VENDOR_PATH=vendor/xmlcoreutils/xml-coreutils-master/src/
+if [[ -d "$XML_COREUTILS_VENDOR_PATH" ]]; then
+  PATH="$XML_COREUTILS_VENDOR_PATH:$PATH"
+fi
+
+TITLE="TESTS RESULTS"
 printf "\n\e[1m\e[34m%*s\e[0m\n" $(((${#TITLE}+$COLUMNS)/2)) "$TITLE"
 printf "\e[1m\e[34m=====================================================================================================\e[0m\n"
 printf "\n"
@@ -74,7 +79,7 @@ for FILE in $*; do
     # Parse the XML
     TIME=$(xml-printf '%s' $RESULT_XML ://testcase[$i]@time)
     NAME=$(xml-printf '%s' $RESULT_XML ://testcase[$i]@name)
-    FAIL=$(xml-printf '%s' $RESULT_XML ://testcase[$i])
+    FAIL=$(xml-printf '%s' $RESULT_XML ://testcase[$i]/failure 2>/dev/null)
 
     if [ -z "$FAIL" ] && [ $MEM_ERRORS -eq 0 ] && [ $HELGRIND_ERRORS -eq 0 ] && [ $DRD_ERRORS -eq 0 ]; then
       # No errors at all

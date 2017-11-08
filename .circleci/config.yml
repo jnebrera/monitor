@@ -96,14 +96,12 @@ jobs:
       - run: sed -i 's%\$(TESTS_\(DRD\|HELGRIND\)_XML)%%g' Makefile
       # rm: Bug caused by LTO, mem checks are impossible & unknown failure
       - run: rm -f tests/0013-mem.c tests/0005-monitors_split_op_blanks.c;
-      # Execute development docker
-      - run: |
-              if [[ ! -z ${KAFKA_DOCKER} ]]; then
-                local -r kafka_link='--link kafka';
-                docker run -d --hostname kafka spotify/kafka;
-              fi
-              docker run -dt ${kafka_link} --name dev-container monitor-dev;
-              docker cp . dev-container:/app;
+      # Launch test kafka
+      - run: docker run -d --hostname kafka --name kafka spotify/kafka;
+      # Launch test container
+      - run: docker run -dt --link kafka --name dev-container monitor-dev;
+      # Copy environment
+      - run: docker cp . dev-container:/app;
       # Actual commands run. Exit 255 will stop iteration
       - run: |
              printf "%s\n" "${docker_cmds}" | tr '\n' '\0' | \
@@ -121,7 +119,6 @@ jobs:
   release:
     <<: *T_dev_run
     environment:
-      - IMAGE: monitor-dev
       - docker_cmds: |
           ./configure --bootstrap
           make

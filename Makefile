@@ -6,16 +6,13 @@ SRCS = $(addprefix src/, \
 	rb_sensor.c rb_sensor_queue.c rb_array.c rb_sensor_monitor.c \
 	rb_sensor_monitor_array.c rb_message_list.c rb_libmatheval.c rb_json.c)
 OBJS = $(SRCS:.c=.o)
-TESTS_C = $(sort $(wildcard tests/0*.c))
+TESTS_PY = $(wildcard tests/0*.py)
 VERSION_H = src/version.h
 
-TESTS = $(TESTS_C:.c=.test)
-OBJ_DEPS_TESTS := tests/json_test.o tests/sensor_test.o tests/snmp_test.o
-TESTS_OBJS = $(TESTS:.test=.o)
-TESTS_CHECKS_XML = $(TESTS_C:.c=.xml)
-TESTS_MEM_XML = $(TESTS_C:.c=.mem.xml)
-TESTS_HELGRIND_XML = $(TESTS_C:.c=.helgrind.xml)
-TESTS_DRD_XML = $(TESTS_C:.c=.drd.xml)
+TESTS_CHECKS_XML = $(TESTS_PY:.py=.xml)
+TESTS_MEM_XML = $(TESTS_PY:.py=.mem.xml)
+TESTS_HELGRIND_XML = $(TESTS_PY:.py=.helgrind.xml)
+TESTS_DRD_XML = $(TESTS_PY:.py=.drd.xml)
 TESTS_VALGRIND_XML = $(TESTS_MEM_XML) $(TESTS_HELGRIND_XML) $(TESTS_DRD_XML)
 TESTS_XML = $(TESTS_CHECKS_XML) $(TESTS_VALGRIND_XML)
 COV_FILES = $(foreach ext,gcda gcno, $(SRCS:.c=.$(ext)) $(TESTS_C:.c=.$(ext)))
@@ -55,7 +52,7 @@ clean: bin-clean
 
 install: bin-install
 
-run_tests = tests/run_tests.sh $(1) $(TESTS_C:.c=)
+print_tests_results = tests/print_tests_results.bash $(1) $(TESTS_PY:.py=)
 run_valgrind = echo "$(MKL_YELLOW) Generating $(2) $(MKL_CLR_RESET)" && $(VALGRIND) --tool=$(1) $(SUPPRESSIONS_VALGRIND_ARG) --xml=yes \
 					--xml-file=$(2) $(3) >/dev/null 2>&1
 
@@ -73,43 +70,32 @@ clang-format-check:
 	done; if [[ ! -z $$ERR ]]; then false; fi
 
 tests: $(TESTS_XML)
-	@$(call run_tests, -cvdh)
+	@$(call print_tests_results, -cvdh)
 
 checks: $(TESTS_CHECKS_XML)
-	@$(call run_tests,-c)
+	@$(call print_tests_results,-c)
 
 memchecks: $(TESTS_VALGRIND_XML)
-	@$(call run_tests,-v)
+	@$(call print_tests_results,-v)
 
 drdchecks: $(TESTS_DRD_XML)
-	@$(call run_tests,-d)
+	@$(call print_tests_results,-d)
 
 helchecks: $(TESTS_HELGRIND_XML)
-	@$(call run_tests,-h)
+	@$(call print_tests_results,-h)
 
-tests/%.mem.xml: tests/%.test
+tests/%.mem.xml: tests/%.py $(BIN)
 	-@$(call run_valgrind,memcheck,"$@","./$<")
 
-tests/%.helgrind.xml: tests/%.test
+tests/%.helgrind.xml: tests/%.py $(BIN)
 	-@$(call run_valgrind,helgrind,"$@","./$<")
 
-tests/%.drd.xml: tests/%.test
+tests/%.drd.xml: tests/%.py $(BIN)
 	-@$(call run_valgrind,drd,"$@","./$<")
 
-tests/%.xml: tests/%.test
+tests/%.xml: tests/%.py $(BIN)
 	@echo "$(MKL_YELLOW) Generating $@$(MKL_CLR_RESET)"
-	@CMOCKA_XML_FILE="$@" CMOCKA_MESSAGE_OUTPUT=XML "./$<" >/dev/null 2>&1
-
-tests/%.o: CPPFLAGS := $(filter-out -flto,$(CPPFLAGS))
-tests/%.test: CPPFLAGS := -I. $(CPPFLAGS)
-MALLOC_FUNCTIONS := $(strip malloc calloc __strdup strdup \
-	json_object_new_object printbuf_new evaluator_create \
-	json_object_new_string json_object_new_int64 snmp_sess_synch_response \
-	snmp_free_pdu)
-WRAP_ALLOC_FUNCTIONS := $(foreach fn, $(MALLOC_FUNCTIONS)\
-						,-Wl,-u,$(fn) -Wl,-wrap,$(fn))
-tests/%.test: tests/%.o $(filter-out src/main.o,$(OBJS)) $(OBJ_DEPS_TESTS)
-	$(CC) $(WRAP_ALLOC_FUNCTIONS) $(CPPFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS) -lcmocka
+	py.test-3 --junitxml="$@" "./$<" >/dev/null 2>&1
 
 check_coverage:
 	@( if [[ "x$(WITH_COVERAGE)" == "xn" ]]; then \
