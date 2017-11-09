@@ -40,6 +40,7 @@ endif
 # Re-make $(VERSION_H) if git version changed
 ifneq (,$(filter-out $(actual_git_version),$(GITVERSION) $(version_c_version)))
 VERSION_H_PHONY=$(VERSION_H)
+$(shell sed -i 's/$(GITVERSION)/$(actual_git_version)/g' -- Makefile.config)
 endif
 
 .PHONY: tests checks memchecks drdchecks helchecks coverage \
