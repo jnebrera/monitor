@@ -17,6 +17,8 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "utils.h"
+
 #include "rb_sensor_monitor.h"
 
 #include "rb_sensor.h"
@@ -949,14 +951,12 @@ static bool extract_vector_value(const char *vector_values,
 
 	*value = toDouble(vector_values);
 	if (errno != 0) {
-		char perrbuf[BUFSIZ];
-		const char *errbuf =
-				strerror_r(errno, perrbuf, sizeof(perrbuf));
+		const char *perrbuf = gnu_strerror_r(errno);
 		rdlog(LOG_WARNING,
 		      "Invalid double: %.*s (%s). Not counting.",
 		      (int)(end_token - vector_values),
 		      vector_values,
-		      errbuf);
+		      perrbuf);
 		return false;
 	}
 

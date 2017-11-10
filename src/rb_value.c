@@ -17,6 +17,8 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "utils.h"
+
 #include "rb_value.h"
 
 #include "rb_sensor.h"
@@ -76,12 +78,11 @@ static void print_monitor_value_enrichment_int(struct printbuf *buf,
 	errno = 0;
 	int64_t integer = json_object_get_int64(val);
 	if (errno != 0) {
-		char errbuf[BUFSIZ];
-		const char *errstr = strerror_r(errno, errbuf, sizeof(errbuf));
+		const char *errbuf = gnu_strerror_r(errno);
 		rdlog(LOG_ERR,
 		      "Cannot extract int value of enrichment key %s: %s",
 		      key,
-		      errstr);
+		      errbuf);
 	} else {
 		sprintbuf(buf, ",\"%s\":%ld", key, integer);
 	}

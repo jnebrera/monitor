@@ -21,6 +21,8 @@
 
 #ifdef HAVE_ZOOKEEPER
 
+#include "util.h"
+
 #include "rb_zk.h"
 
 #include <librd/rdavl.h>
@@ -1045,7 +1047,7 @@ struct rb_zk *rb_zk_init(char *host, int zk_timeout) {
 	rd_thread_create(&_zk->zk_thread, NULL, NULL, zk_ok_watcher, _zk);
 
 	if (NULL == _zk->handler) {
-		strerror_r(errno, strerror_buf, sizeof(strerror_buf));
+		const char *strerror_buf = gnu_strerror_r(errno);
 		rdlog(LOG_ERR, "Can't init zookeeper: [%s].", strerror_buf);
 	} else {
 		rdlog(LOG_ERR, "Connected to ZooKeeper %s", _zk->zk_host);

@@ -21,6 +21,8 @@
 
 #ifdef HAVE_ZOOKEEPER
 
+#include "utils.h"
+
 #include "rb_sensor.h"
 #include "rb_sensor_queue.h"
 #include "rb_zk.h"
@@ -475,7 +477,7 @@ struct rb_monitor_zk *init_rbmon_zk(char *host,
 	rb_monitor_zk_parse_sensors(_zk, zk_sensors);
 
 	if (NULL == _zk->zk_handler) {
-		strerror_r(errno, strerror_buf, sizeof(strerror_buf));
+		const char *strerror_buf = gnu_strerror_r(errno);
 		rdlog(LOG_ERR, "Can't init zookeeper: [%s].", strerror_buf);
 		goto err;
 	} else {

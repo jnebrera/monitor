@@ -19,6 +19,8 @@
 
 #include "config.h"
 
+#include "utils.h"
+
 #include "rb_sensor.h"
 #include "rb_sensor_queue.h"
 
@@ -448,11 +450,10 @@ static void process_rb_http_options(struct _worker_info *worker_info) {
 			      http_opts[i].option_key,
 			      sizeof(aux));
 		} else if (snprintf_rc < 0) {
-			char err[BUFSIZ];
 			rdlog(LOG_ERR,
 			      "Couldn't print %s: %s",
 			      http_opts[i].option_key,
-			      strerror_r(errno, err, sizeof(err)));
+			      gnu_strerror_r(errno));
 		} else {
 			char err[BUFSIZ];
 			const int rc = rb_http_handler_set_opt(
