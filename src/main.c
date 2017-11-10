@@ -55,7 +55,6 @@
 #include "src/version.h"
 
 static const char CONFIG_RDKAFKA_KEY[] = "rdkafka.";
-static const char CONFIG_ZOOKEEPER_KEY[] = "zookeeper";
 static const char CONFIG_SENSORS_KEY[] = "sensors";
 
 static const char ENABLE_RBHTTP_CONFIGURE_OPT[] = "--enable-rbhttp";
