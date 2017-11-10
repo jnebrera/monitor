@@ -95,12 +95,12 @@ bool snmp_solve_response(char *value_buf,
 		      snmp_api_errstring(snmp_sess_session(session->sessp)
 							 ->s_snmp_errno));
 		// rdlog(LOG_ERR,"Error in packet.Reason:
-		// %s\n",snmp_errstring(response->errstat));
+		// %s",snmp_errstring(response->errstat));
 	} else if (NULL == response) {
 		rdlog(LOG_ERR, "No SNMP response given.");
 	} else {
 		rdlog(LOG_DEBUG,
-		      "SNMP OID %s response type %d: %s\n",
+		      "SNMP OID %s response type %d: %s",
 		      oid_string,
 		      response->variables->type,
 		      value_buf);

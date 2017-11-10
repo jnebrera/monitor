@@ -377,15 +377,13 @@ static void msg_callback(struct rb_http_handler_s *rb_http_handler,
 
 	if (status_code != 0) {
 		rdlog(LOG_ERR,
-		      "Curl returned %d code for one message: %s\n",
+		      "Curl returned %d code for one message: %s",
 		      status_code,
 		      status_code_str);
 	}
 
 	if (status_code == 0 && http_status != 200) {
-		rdlog(LOG_ERR,
-		      "HTTP server returned %ld STATUS.\n",
-		      http_status);
+		rdlog(LOG_ERR, "HTTP server returned %ld STATUS.", http_status);
 	}
 
 	(void)rb_http_handler;
@@ -500,7 +498,7 @@ static int worker_process_sensor_send_array(struct _worker_info *worker_info,
 		size_t len = msgs->msgs[i].len;
 
 		if (worker_info->kafka_broker) {
-			rdlog(LOG_DEBUG, "[Kafka] %s\n", msg);
+			rdlog(LOG_DEBUG, "[Kafka] %s", msg);
 			const int produce_rc = rd_kafka_produce(
 					worker_info->rkt,
 					RD_KAFKA_PARTITION_UA,
@@ -528,7 +526,7 @@ static int worker_process_sensor_send_array(struct _worker_info *worker_info,
 #ifdef HAVE_RBHTTP
 		if (worker_info->http_handler) {
 			char err[BUFSIZ];
-			rdlog(LOG_DEBUG, "[HTTP] %s\n", msg);
+			rdlog(LOG_DEBUG, "[HTTP] %s", msg);
 			const int produce_rc = rb_http_produce(
 					worker_info->http_handler,
 					msg,
@@ -821,7 +819,7 @@ int main(int argc, char *argv[]) {
 						    errstr,
 						    sizeof(errstr)))) {
 			rdlog(LOG_ERR,
-			      "Error calling kafka_new producer: %s\n",
+			      "Error calling kafka_new producer: %s",
 			      errstr);
 			exit(1);
 		}
@@ -831,7 +829,7 @@ int main(int argc, char *argv[]) {
 
 		if (rd_kafka_brokers_add(worker_info.rk,
 					 worker_info.kafka_broker) == 0) {
-			rdlog(LOG_ERR, "No valid brokers specified\n");
+			rdlog(LOG_ERR, "No valid brokers specified");
 			exit(1);
 		}
 
@@ -873,7 +871,7 @@ int main(int argc, char *argv[]) {
 				   NULL,
 				   get_report_thread,
 				   worker_info.http_handler)) {
-			rdlog(LOG_ERR, "Error creating thread\n");
+			rdlog(LOG_ERR, "Error creating thread");
 			exit(1);
 		} else {
 			rdlog(LOG_INFO,
@@ -928,7 +926,7 @@ int main(int argc, char *argv[]) {
 			while ((msg_left = rd_kafka_outq_len(worker_info.rk))) {
 				rdlog(LOG_INFO,
 				      "Waiting for messages to send. Still "
-				      "%u messages to be exported.\n",
+				      "%u messages to be exported.",
 				      msg_left);
 
 				rd_kafka_poll(worker_info.rk, 1000);
@@ -944,7 +942,7 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_RBHTTP
 	if (worker_info.http_endpoint) {
 		pthread_join(worker_info.pthread_report, NULL);
-		rdlog(LOG_INFO, "[Thread] pthread_report finishing. \n");
+		rdlog(LOG_INFO, "[Thread] pthread_report finishing.");
 		rb_http_handler_destroy(worker_info.http_handler, NULL, 0);
 	}
 #endif
