@@ -590,7 +590,7 @@ worker_process_sensor(struct _worker_info *worker_info, rb_sensor_t *sensor) {
 static void *worker(void *_info) {
 	struct _worker_info *worker_info = _info;
 
-	rdlog(LOG_INFO, "Thread %lu connected successfuly\n.", pthread_self());
+	rdlog(LOG_INFO, "Worker connected successfuly.");
 	while (run) {
 		rb_sensor_t *sensor = NULL;
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
