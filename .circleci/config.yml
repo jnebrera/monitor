@@ -125,15 +125,14 @@ jobs:
           make checks
 
   # Test with assertions on
-  # TODO recover
-  # assertions:
-  #  <<: *T_dev_run
-  #  environment:
-  #    - docker_cmds: |
-  #        ./configure --bootstrap
-  #        sed -i 's/-DNDEBUG//g' Makefile.config
-  #        make
-  #        make checks
+  assertions:
+    <<: *T_dev_run
+    environment:
+      - docker_cmds: |
+          ./configure --bootstrap
+          sed -i 's/-DNDEBUG//g' Makefile.config
+          make
+          make checks
 
   coverage:
     <<: *T_dev_run
@@ -184,9 +183,9 @@ workflows:
       # Base docker for build and tests application
       - build_dev
 
-      #- assertions:
-      #    requires:
-      #      - build_dev
+      - assertions:
+          requires:
+            - build_dev
       - release:
           requires:
             - build_dev

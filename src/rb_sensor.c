@@ -275,6 +275,9 @@ static bool sensor_common_attrs(rb_sensor_t *sensor,
   */
 static void sensor_set_defaults(const struct _worker_info *worker_info,
 				rb_sensor_t *sensor) {
+#ifdef RB_SENSOR_MAGIC
+	sensor->magic = RB_SENSOR_MAGIC;
+#endif
 	sensor->data.snmp_params.session.timeout = worker_info->timeout;
 	sensor->refcnt = 1;
 }

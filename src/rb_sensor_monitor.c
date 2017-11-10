@@ -681,7 +681,6 @@ rb_monitor_op_vector_i(void *f,
 		}
 
 		assert(MONITOR_VALUE_T__VALUE == mv_v_i->type);
-		assert(0 == strcmp(mv_v_i->name, libmatheval_vars->names[v]));
 
 		libmatheval_vars->values[v] = mv_v_i->value.value;
 	}
