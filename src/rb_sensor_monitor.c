@@ -383,7 +383,7 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 		RB_MONITOR_ENRICHMENT_STR("unit", unit),
 		RB_MONITOR_ENRICHMENT_STR("group_name", group_name),
 	};
-	// clang-format off
+	// clang-format on
 
 	for (size_t i = 0; i < RD_ARRAYSIZE(enrichment_add); ++i) {
 		/// @todo check additions
@@ -510,9 +510,8 @@ static struct monitor_value *rb_monitor_get_system_external_value(
 		rb_monitor_value_array_t *ops_vars) {
 	(void)process_ctx;
 	(void)ops_vars;
-	return rb_monitor_get_external_value(monitor,
-					     system_solve_response,
-					     NULL);
+	return rb_monitor_get_external_value(
+			monitor, system_solve_response, NULL);
 }
 
 /** Convenience function */
@@ -534,9 +533,8 @@ static struct monitor_value *rb_monitor_get_snmp_external_value(
 		struct process_sensor_monitor_ctx *process_ctx,
 		rb_monitor_value_array_t *op_vars) {
 	(void)op_vars;
-	return rb_monitor_get_external_value(monitor,
-					     snmp_solve_response0,
-					     process_ctx->snmp_sessp);
+	return rb_monitor_get_external_value(
+			monitor, snmp_solve_response0, process_ctx->snmp_sessp);
 }
 
 /** Create a libmatheval vars using op_vars */
@@ -551,8 +549,8 @@ op_libmatheval_vars(rb_monitor_value_array_t *op_vars, char **names) {
 	}
 
 	for (size_t i = 0; i < op_vars->count; ++i) {
-		assert (rb_monitor_value_array_at(op_vars, 0)->type ==
-			rb_monitor_value_array_at(op_vars, i)->type);
+		assert(rb_monitor_value_array_at(op_vars, 0)->type ==
+		       rb_monitor_value_array_at(op_vars, i)->type);
 
 		struct monitor_value *mv =
 				rb_monitor_value_array_at(op_vars, i);
@@ -722,12 +720,8 @@ rb_monitor_op_vector(void *f,
 
 	// Foreach member of vector
 	for (size_t i = 0; i < mv_0->array.children_count; ++i) {
-		children[i] = rb_monitor_op_vector_i(f,
-						     op_vars,
-						     libmatheval_vars,
-						     i,
-						     monitor,
-						     now);
+		children[i] = rb_monitor_op_vector_i(
+				f, op_vars, libmatheval_vars, i, monitor, now);
 
 		if (NULL != children[i]) {
 			sum += children[i]->value.value;
@@ -750,14 +744,12 @@ rb_monitor_op_vector(void *f,
 			 "%lf",
 			 split_op_value);
 
-		split_op = process_novector_monitor(string_value,
-						    split_op_value,
-						    now);
+		split_op = process_novector_monitor(
+				string_value, split_op_value, now);
 	}
 
-	return new_monitor_value_array(mv_0->array.children_count,
-				       children,
-				       split_op);
+	return new_monitor_value_array(
+			mv_0->array.children_count, children, split_op);
 }
 
 /** Process an operation monitor
@@ -1045,9 +1037,8 @@ static struct monitor_value *process_vector_monitor(const rb_monitor_t *monitor,
 			 sizeof(split_op_result),
 			 "%lf",
 			 result);
-		split_op = process_novector_monitor(split_op_result,
-						    result,
-						    now);
+		split_op = process_novector_monitor(
+				split_op_result, result, now);
 	}
 
 	return new_monitor_value_array(n_children, children, split_op);

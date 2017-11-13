@@ -208,54 +208,16 @@ process_monitor_value(const rb_monitor_t *monitor,
 	return ret_mv;
 }
 
-bool process_monitors_array(struct _worker_info *worker_info,
-			    rb_sensor_t *sensor,
+bool process_monitors_array(rb_sensor_t *sensor,
 			    rb_monitors_array_t *monitors,
 			    rb_monitor_value_array_t *last_known_monitor_values,
 			    ssize_t **monitors_deps,
-			    struct snmp_params_s *snmp_params,
 			    rb_message_list *ret) {
 	bool aok = true;
-	struct monitor_snmp_session *snmp_sessp = NULL;
 	struct process_sensor_monitor_ctx *process_ctx = NULL;
-	/* @todo we only need this if we are going to use SNMP */
-	if (NULL == snmp_params->peername) {
-		aok = false;
-		rdlog(LOG_ERR,
-		      "Peername not setted in %s. Skipping.",
-		      rb_sensor_name(sensor));
-	}
 
-	if (NULL == snmp_params->session.community) {
-		aok = false;
-		rdlog(LOG_ERR,
-		      "Community not setted in %s. Skipping.",
-		      rb_sensor_name(sensor));
-	}
-
-	if (aok) {
-		pthread_mutex_lock(&worker_info->snmp_session_mutex);
-		/* @TODO: You can do it later, see session_api.h */
-		worker_info->default_session.peername =
-				(char *)snmp_params->peername;
-		const struct monitor_snmp_new_session_config config = {
-				snmp_params->session.community,
-				snmp_params->session.timeout,
-				worker_info->default_session.flags,
-				snmp_params->session.version};
-		snmp_sessp = new_snmp_session(&worker_info->default_session,
-					      &config);
-		if (NULL == snmp_sessp) {
-			rdlog(LOG_ERR,
-			      "Error creating session: %s",
-			      snmp_errstring(worker_info->default_session
-							     .s_snmp_errno));
-			aok = 0;
-		}
-		pthread_mutex_unlock(&worker_info->snmp_session_mutex);
-
-		process_ctx = new_process_sensor_monitor_ctx(snmp_sessp);
-	}
+	monitor_snmp_session *snmp_sess = rb_sensor_snmp_session(sensor);
+	process_ctx = new_process_sensor_monitor_ctx(snmp_sess);
 
 	for (size_t i = 0; aok && i < monitors->count; ++i) {
 		rb_monitor_value_array_t *op_vars =
@@ -299,10 +261,6 @@ bool process_monitors_array(struct _worker_info *worker_info,
 		destroy_process_sensor_monitor_ctx(process_ctx);
 	}
 
-	if (snmp_sessp) {
-		destroy_snmp_session(snmp_sessp);
-	}
-
 	return aok;
 }
 
@@ -321,7 +279,7 @@ static ssize_t find_monitor_pos(const rb_monitors_array_t *monitors_array,
 				rb_monitor_group_id(monitors_array->elms[i]);
 		if (0 == strcmp(name, i_name) && // If equal name
 		    ((!i_gid && !group_id)       // Both no groups
-		     // or both have group and same group
+					   // or both have group and same group
 		     ||
 		     ((i_gid && group_id) && 0 == strcmp(group_id, i_gid)))) {
 			return (ssize_t)i;

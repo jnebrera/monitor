@@ -22,44 +22,18 @@
 #include <librd/rd.h>
 #include <librd/rdlog.h>
 
-// #define SNMP_SESS_MAGIC 0x12345678
+bool new_snmp_session(struct monitor_snmp_session *ss,
+		      netsnmp_session *params) {
 
-struct monitor_snmp_session {
-#ifdef SNMP_SESS_MAGIC
-	int magic;
-#endif
-	void *sessp;
-};
-
-// @TODO include initial_session in config
-struct monitor_snmp_session *
-new_snmp_session(struct snmp_session *initial_session,
-		 const struct monitor_snmp_new_session_config *config) {
-	struct monitor_snmp_session *session = calloc(1, sizeof(*session));
-	if (session) {
-#ifdef SNMP_SESS_MAGIC
-		session->magic = SNMP_SESS_MAGIC;
-#endif
-
-		session->sessp = snmp_sess_open(initial_session);
-
-		if (session->sessp) {
-			/* just a pointer to opaque structure. It does not
-			 * allocate anything */
-			struct snmp_session *ss =
-					snmp_sess_session(session->sessp);
-
-			assert(ss);
-			ss->community = (u_char *)strdup(config->community);
-			ss->community_len = strlen(config->community);
-			ss->timeout = config->timeout;
-			ss->flags = config->flags;
-			ss->version = config->version;
-		} else {
-			rdlog(LOG_ERR, "Failed to load SNMP session");
-		}
+	ss->sessp = snmp_sess_open(params);
+	if (unlikely(NULL == ss->sessp)) {
+		char *strerror_buf = NULL;
+		snmp_error(params, NULL, NULL, &strerror_buf);
+		rdlog(LOG_ERR, "Failed to load SNMP session: %s", strerror_buf);
+		free(strerror_buf);
 	}
-	return session;
+
+	return ss->sessp != NULL;
 }
 
 bool snmp_solve_response(char *value_buf,
@@ -67,10 +41,6 @@ bool snmp_solve_response(char *value_buf,
 			 double *number,
 			 struct monitor_snmp_session *session,
 			 const char *oid_string) {
-#ifdef SNMP_SESS_MAGIC
-	assert(session->magic == SNMP_SESS_MAGIC);
-#endif
-
 	struct snmp_pdu *pdu = snmp_pdu_create(SNMP_MSG_GET);
 	struct snmp_pdu *response = NULL;
 
@@ -165,5 +135,4 @@ int net_snmp_version(const char *string_version, const char *sensor_name) {
 
 void destroy_snmp_session(struct monitor_snmp_session *s) {
 	snmp_sess_close(s->sessp);
-	free(s);
 }

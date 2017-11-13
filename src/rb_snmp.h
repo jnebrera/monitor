@@ -22,20 +22,20 @@
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 
+#include <assert.h>
 #include <stdbool.h>
 
-struct monitor_snmp_new_session_config {
-	const char *community;
-	int timeout;
-	u_long flags;
-	long version;
-};
+/// Structure to be able to safely pass-around net-snmp pointer
+typedef struct monitor_snmp_session {
+	// Private data - Do not use
+	void *sessp; ///< net-snmp session opaque pointer
+} monitor_snmp_session;
 
-struct monitor_snmp_session;
-
-struct monitor_snmp_session *
-new_snmp_session(struct snmp_session *ss,
-		 const struct monitor_snmp_new_session_config *config);
+/** Creates a new net-snmp session based on config
+  @param ss SNMP Session
+  @param params SNMP session parameters
+  */
+bool new_snmp_session(struct monitor_snmp_session *ss, netsnmp_session *params);
 
 /**
   SNMP request & response adaption.

@@ -75,6 +75,36 @@ static const char *str_default_config = /* "conf:" */ "{"
 "}";
 // clang-format on
 
+/// SHARED Info needed by threads.
+struct _worker_info {
+	const char *community, *kafka_broker, *kafka_topic;
+	const char *max_kafka_fails; /* I want a const char * because
+					rd_kafka_conf_set implementation */
+
+#ifdef HAVE_RBHTTP
+	const char *http_endpoint;
+	struct rb_http_handler_s *http_handler;
+	pthread_t pthread_report;
+#endif
+
+	rd_kafka_t *rk;
+	rd_kafka_topic_t *rkt;
+	rd_kafka_conf_t *rk_conf;
+	rd_kafka_topic_conf_t *rkt_conf;
+	int64_t sleep_worker, max_snmp_fails, timeout, debug_output_flags;
+	int64_t kafka_timeout;
+	rd_fifoq_t *queue;
+#ifdef HAVE_RBHTTP
+	int64_t http_mode;
+	int64_t http_insecure;
+#endif
+	int64_t http_max_total_connections;
+	int64_t http_timeout;
+	int64_t http_connttimeout;
+	int64_t http_verbose;
+	int64_t rb_http_max_messages;
+};
+
 struct _main_info {
 	const char *syslog_indent;
 	uint64_t sleep_main, threads;
@@ -573,7 +603,7 @@ worker_process_sensor(struct _worker_info *worker_info, rb_sensor_t *sensor) {
 	assert(sensor);
 	assert_rb_sensor(sensor);
 
-	process_rb_sensor(worker_info, sensor, &messages);
+	process_rb_sensor(sensor, &messages);
 	rb_sensor_put(sensor);
 
 	worker_process_sensor_send_messages(worker_info, &messages);
@@ -629,8 +659,7 @@ static void *rdkafka_delivery_reports_poll_f(void *void_worker_info) {
   @param sensor_json JSON config
   @return Sensors array
   */
-static rb_sensors_array_t *
-parse_sensors(struct _worker_info *worker_info, struct json_object *config) {
+static rb_sensors_array_t *parse_sensors(struct json_object *config) {
 	struct json_object *json_sensors = NULL;
 	const int get_rc = json_object_object_get_ex(
 			config, CONFIG_SENSORS_KEY, &json_sensors);
@@ -664,7 +693,7 @@ parse_sensors(struct _worker_info *worker_info, struct json_object *config) {
 
 		json_object *json_sensor =
 				json_object_array_get_idx(json_sensors, i);
-		rb_sensor_t *sensor = parse_rb_sensor(json_sensor, worker_info);
+		rb_sensor_t *sensor = parse_rb_sensor(json_sensor);
 		if (sensor) {
 			rb_sensor_array_add(ret, sensor);
 		}
@@ -803,9 +832,6 @@ int main(int argc, char *argv[]) {
 #endif
 	}
 
-	snmp_sess_init(&worker_info.default_session); /* set defaults */
-	worker_info.default_session.version = SNMP_VERSION_1;
-	pthread_mutex_init(&worker_info.snmp_session_mutex, 0);
 	main_info.syslog_indent = "rb_monitor";
 	openlog(main_info.syslog_indent, 0, LOG_USER);
 
@@ -880,8 +906,7 @@ int main(int argc, char *argv[]) {
 	}
 #endif /* HAVE_RBHTTP */
 
-	rb_sensors_array_t *sensors_array =
-			parse_sensors(&worker_info, config_file);
+	rb_sensors_array_t *sensors_array = parse_sensors(config_file);
 	if (!sensors_array) {
 		rdlog(LOG_ERR, "Couldn't create sensor array (OOM?)");
 		exit(1);
@@ -947,7 +972,6 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 
-	pthread_mutex_destroy(&worker_info.snmp_session_mutex);
 	json_object_put(default_config);
 	json_object_put(config_file);
 	sensor_queue_done(&queue);

@@ -24,14 +24,6 @@
 
 #include <json-c/json.h>
 
-/// SNMP connection parameters
-struct snmp_params_s {
-	/// Peername to connect
-	const char *peername;
-	/// Connection values
-	struct monitor_snmp_new_session_config session;
-};
-
 /// Monitors array
 typedef struct rb_array rb_monitors_array_t;
 
@@ -56,7 +48,6 @@ struct rb_sensor_s;
 rb_monitor_t *rb_monitors_array_elm_at(rb_monitors_array_t *array, size_t i);
 
 /** Process all monitors in sensor, returning result in ret
-  @param worker_info All workers info
   @param sensor Current sensor
   @param monitors Array of monitors to ask
   @param last_known_monitor_values Last monitor values, to be able to compare
@@ -64,12 +55,10 @@ rb_monitor_t *rb_monitors_array_elm_at(rb_monitors_array_t *array, size_t i);
   @param snmp_params SNMP connection parameters
   @param ret Message returning function
   @warning This function assumes ALL fields of sensor_data will be populated */
-bool process_monitors_array(struct _worker_info *worker_info,
-			    struct rb_sensor_s *sensor,
+bool process_monitors_array(struct rb_sensor_s *sensor,
 			    rb_monitors_array_t *monitors,
 			    rb_monitor_value_array_t *last_known_monitor_values,
 			    ssize_t **monitors_deps,
-			    struct snmp_params_s *snmp_params,
 			    rb_message_list *ret);
 
 /** Given an array of monitors, return all monitor's internal dependency.
