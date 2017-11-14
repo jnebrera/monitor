@@ -33,7 +33,6 @@ rb_monitors_array_add(rb_monitors_array_t *array, rb_monitor_t *monitor) {
 
 rb_monitor_t *rb_monitors_array_elm_at(rb_monitors_array_t *array, size_t i) {
 	rb_monitor_t *ret = array->elms[i];
-	assert_rb_monitor(ret);
 	return ret;
 }
 

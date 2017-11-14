@@ -36,10 +36,6 @@
 
 static const char DEFAULT_TIMESTAMP_SEP[] = ":";
 
-#ifndef NDEBUG
-#define RB_MONITOR_MAGIC 0x0b010a1c0b010a1cl
-#endif
-
 /// X-macro to define monitor operations
 /// _X(menum,cmd,value_type,fn)
 #define MONITOR_CMDS_X                                                         \
@@ -57,9 +53,6 @@ static const char DEFAULT_TIMESTAMP_SEP[] = ":";
 	_X(RB_MONITOR_T__OP, "op", "op", rb_monitor_get_op_result)
 
 struct rb_monitor_s {
-#ifdef RB_MONITOR_MAGIC
-	uint64_t magic;
-#endif
 	enum monitor_cmd_type {
 #define _X(menum, cmd, type, fn) menum,
 		MONITOR_CMDS_X
@@ -81,12 +74,6 @@ struct rb_monitor_s {
 	const char *cmd_arg;  ///< Argument given to command
 	json_object *enrichment;
 };
-
-#ifndef NDEBUG
-void assert_rb_monitor(const rb_monitor_t *monitor) {
-	assert(RB_MONITOR_MAGIC == (monitor)->magic);
-}
-#endif
 
 static const char *rb_monitor_type(const rb_monitor_t *monitor) {
 	assert(monitor);
@@ -336,10 +323,6 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 		free(unit);
 		return NULL;
 	}
-
-#ifdef RB_MONITOR_MAGIC
-	ret->magic = RB_MONITOR_MAGIC;
-#endif
 
 	ret->splittok = PARSE_CJSON_CHILD_DUP_STR(json_monitor, "split", NULL);
 	ret->splitop = aux_split_op;

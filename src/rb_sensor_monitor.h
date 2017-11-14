@@ -33,12 +33,6 @@ struct _worker_info;
 /// Single monitor
 typedef struct rb_monitor_s rb_monitor_t;
 
-#ifdef NDEBUG
-#define assert_rb_monitor(monitor)
-#else
-void assert_rb_monitor(const rb_monitor_t *monitor);
-#endif
-
 /// Context to process all monitors
 struct process_sensor_monitor_ctx;
 
