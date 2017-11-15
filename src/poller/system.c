@@ -17,39 +17,27 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "system.h"
+
 #include <librd/rdlog.h>
 
 #include <ctype.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#pragma once
-
-static inline char *trim_end(char *buf) {
+static char *trim_end(char *buf) {
 	char *end = buf + strlen(buf) - 1;
-	while (end >= buf && isspace(*end))
+	while (end >= buf && isspace(*end)) {
 		end--;
+	}
 	*(end + 1) = '\0';
 	return buf;
 }
 
-/**
- Exec a system command and puts the output in value_buf
- @param worker_info    Worker_info struct
- @param value_buf      Buffer to store the output
- @param value_buf_len  Length of value_buf
- @param number         If possible, number conversion of value_buf
- @param unused         Just for snmp_solve_response compatibility
- @param command        Command to execute
- @todo see if we can join with snmp_solve_response somehow
- @return               1 if number. 0 ioc.
- */
-static bool system_solve_response(char *buff,
-				  size_t buff_size,
-				  double *number,
-				  void *unused,
-				  const char *command) {
+bool system_solve_response(char *buff,
+			   size_t buff_size,
+			   double *number,
+			   void *unused,
+			   const char *command) {
 	(void)unused;
 
 	bool ret = false;
@@ -64,8 +52,9 @@ static bool system_solve_response(char *buff,
 			trim_end(buff);
 			char *endPtr;
 			*number = strtod(buff, &endPtr);
-			if (buff != endPtr)
+			if (buff != endPtr) {
 				ret = true;
+			}
 		}
 
 		fclose(fp);

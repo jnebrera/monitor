@@ -23,13 +23,14 @@
 
 #include "rb_sensor.h"
 
+#include "poller/system.h"
 #include "rb_libmatheval.h"
 #include "rb_snmp.h"
-#include "rb_system.h"
 
 #include "rb_json.h"
 
 #include <librd/rdfloat.h>
+#include <librd/rdlog.h>
 
 #include <math.h>
 #include <matheval.h>
