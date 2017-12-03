@@ -10,7 +10,7 @@ mkl_mkvar_append CPPFLAGS CPPFLAGS "-DNDEBUG"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-std=gnu11"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-D_GNU_SOURCE"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wunused -Wcast-align -Wdisabled-optimization -Winit-self"
-mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wlogical-op -Wmissing-include-dirs -Wstrict-overflow=5"
+mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wmissing-include-dirs -Wstrict-overflow=5"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wundef -Wall -Wextra -Wshadow -Wsign-conversion"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wswitch-default -Wmissing-declarations"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-I. -Isrc/"
@@ -213,6 +213,16 @@ function check_snmp {
 
 function checks {
     mkl_define_set "OS name" "osName" "`uname`"
+
+#  config name
+#  define name
+#  action (fail|disable|cont)
+#  compiler (CC|CXX)
+#  compiler arguments (optional "", example: "-lzookeeper")
+#  source snippet
+    mkl_compile_check WARNING_LOGICAL_OP WARNING_LOGICAL_OP disable CC \
+      '-Wlogical-op' ''
+
 
     mkl_lib_check pthread '' fail CC "-lpthread" \
         "#include <pthread.h>

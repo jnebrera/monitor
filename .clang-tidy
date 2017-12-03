@@ -1,0 +1,21 @@
+---
+# cert-env33-c for popen, since we want command injection from configuration.
+Checks: >
+  *,-cert-env33-c
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+AnalyzeTemporaryDtors: false
+FormatStyle:     none
+CheckOptions:
+  - key:             cert-dcl59-cpp.HeaderFileExtensions
+    value:           h
+  - key:             google-build-namespaces.HeaderFileExtensions
+    value:           h
+  - key:             google-global-names-in-headers.HeaderFileExtensions
+    value:           h
+  - key:             google-readability-namespace-comments.SpacesBeforeComments
+    value:           '2'
+  - key:             misc-misplaced-widening-cast.CheckImplicitCasts
+    value:           '1'
+...
+

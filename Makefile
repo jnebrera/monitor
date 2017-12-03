@@ -1,11 +1,11 @@
 
 BIN = rb_monitor
 
-SRCS = $(addprefix src/, \
+SRCS = $(strip $(addprefix src/, \
 	main.c rb_snmp.c rb_value.c rb_zk.c rb_monitor_zk.c \
 	rb_sensor.c rb_sensor_queue.c rb_array.c rb_sensor_monitor.c \
 	rb_sensor_monitor_array.c rb_message_list.c rb_libmatheval.c \
-	rb_json.c poller/system.c)
+	rb_json.c poller/system.c))
 OBJS = $(SRCS:.c=.o)
 TESTS_PY = $(wildcard tests/0*.py)
 VERSION_H = src/version.h
@@ -24,7 +24,9 @@ ifneq ($(PYTEST_JOBS), 0)
 pytest_jobs_arg := -n $(PYTEST_JOBS)
 endif
 VALGRIND ?= valgrind
-CLANG_FORMAT ?= clang-format-3.8
+CLANG_FORMAT ?= clang-format
+CLANG_TIDY ?= clang-tidy
+
 SUPPRESSIONS_FILE ?= tests/valgrind.suppressions
 ifneq ($(wildcard $(SUPPRESSIONS_FILE)),)
 SUPPRESSIONS_VALGRIND_ARG = --suppressions=$(SUPPRESSIONS_FILE)
@@ -74,6 +76,9 @@ clang-format-check:
 	for src in $(wildcard src/*.c src/*.h); do \
 		diff -Nu <($(CLANG_FORMAT) $$src) $$src | colordiff || ERR="yes";  \
 	done; if [[ ! -z $$ERR ]]; then false; fi
+
+clang-tidy:
+	$(CLANG_TIDY) $(SRCS) -- -I. $(strip $(filter-out -flto,$(CPPFLAGS)))
 
 tests: $(TESTS_XML)
 	@$(call print_tests_results, -cvdh)
