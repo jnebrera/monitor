@@ -63,6 +63,22 @@ jobs:
             printf '%s' "$out"
             test -z "$out"
 
+  clang-tidy:
+    docker:
+      - image: alabate/clang-tidy
+    steps:
+      - checkout
+      - run: |
+          echo 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-5.0 main' \
+            >> /etc/apt/sources.list
+          apt update -o Acquire::AllowInsecureRepositories=true -q
+          apt install -qy --allow-unauthenticated --no-install-recommends \
+            clang-5.0 clang-tidy-5.0 \
+            librdkafka-dev libz-dev libsnmp-dev libmatheval-dev libjson-c-dev \
+            libfl-dev wget bsdtar make
+      - run: CC=clang-5.0 ./configure --bootstrap
+      - run: CLANG_TIDY=clang-tidy-5.0 make clang-tidy
+
 
   # Build & prepare devel container
   build_dev:
@@ -184,22 +200,18 @@ workflows:
   version: 2
   binary:
     jobs:
-      - clang-format
+      #- clang-format
+      - clang-tidy
 
       # Base docker for build and tests application
-      - build_dev
+      #- build_dev
 
-      - assertions:
-          requires:
-            - build_dev
-      - release:
-          requires:
-            - build_dev
-      - coverage:
-          requires:
-            - build_dev
-      #- checks:
+      #- assertions:
       #    requires:
-      #      - make
-
-      #
+      #      - build_dev
+      #- release:
+      #    requires:
+      #      - build_dev
+      #- coverage:
+      #    requires:
+      #      - build_dev
