@@ -398,14 +398,12 @@ parse_rb_monitor(json_object *json_monitor,
 	if (NULL == cmd_arg) {
 		rdlog(LOG_ERR, "Couldn't extract monitor command");
 		return NULL;
-	} else {
-		rb_monitor_t *ret = parse_rb_monitor0(cmd_type,
-						      cmd_arg,
-						      json_monitor,
-						      sensor_enrichment);
-
-		return ret;
 	}
+
+	rb_monitor_t *ret = parse_rb_monitor0(
+			cmd_type, cmd_arg, json_monitor, sensor_enrichment);
+
+	return ret;
 
 	return NULL;
 }
@@ -758,7 +756,9 @@ rb_monitor_get_op_result(const rb_monitor_t *monitor,
 	/// @todo error treatment in this cases
 	if (NULL == op_vars) {
 		return NULL;
-	} else if (0 == op_vars->count) {
+	}
+
+	if (0 == op_vars->count) {
 		return NULL;
 	}
 
