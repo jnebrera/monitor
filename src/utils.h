@@ -21,6 +21,10 @@
 
 #include <string.h>
 
+/// Unlikely failure of a malloc. It can be used to not compile some unused
+/// branch if system have memory overcommit.
+#define alloc_unlikely(x) unlikely(x)
+
 /** Homogenize GNU-specific and XSI-compliant strerror function. Returns a
     thread local buffer, so there is no need for free returned buffer. However,
     the function is not reentrant; you need to use strerror_r for that.

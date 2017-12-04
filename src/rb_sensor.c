@@ -25,14 +25,14 @@
 
 #include "rb_sensor_monitor_array.h"
 
+#include "utils.h"
+
 #include <librd/rd.h>
 #include <librd/rdfloat.h>
 #include <librd/rdlog.h>
 
 static const char SENSOR_NAME_ENRICHMENT_KEY[] = "sensor_name";
 static const char SENSOR_ID_ENRICHMENT_KEY[] = "sensor_id";
-
-#define alloc_unlikely(x) unlikely(x)
 
 /// Sensor to monitor
 struct rb_sensor_s {
