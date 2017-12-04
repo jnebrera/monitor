@@ -97,12 +97,12 @@ struct _worker_info {
 #ifdef HAVE_RBHTTP
 	int64_t http_mode;
 	int64_t http_insecure;
-#endif
 	int64_t http_max_total_connections;
 	int64_t http_timeout;
 	int64_t http_connttimeout;
 	int64_t http_verbose;
 	int64_t rb_http_max_messages;
+#endif
 };
 
 struct _main_info {
@@ -302,19 +302,12 @@ static json_bool parse_json_config(json_object *config,
 			worker_info->kafka_timeout = json_object_get_int64(val);
 		} else if (0 == strcmp(key, "sleep_worker")) {
 			worker_info->sleep_worker = json_object_get_int64(val);
-		} else if (0 == strcmp(key, "http_endpoint")) {
-#ifdef HAVE_RBHTTP
-			worker_info->http_endpoint =
-					json_object_get_string(val);
-#else
-			rdlog(LOG_ERR,
-			      "rb_monitor does not have librbhttp support, so"
-			      " %s key is invalid. Please compile it with %s",
-			      key,
-			      ENABLE_RBHTTP_CONFIGURE_OPT);
-#endif
 		} else if (0 == strcmp(key, CONFIG_RDKAFKA_KEY)) {
 			parse_rdkafka_config_json(worker_info, key, val);
+#ifdef HAVE_RBHTTP
+		} else if (0 == strcmp(key, "http_endpoint")) {
+			worker_info->http_endpoint =
+					json_object_get_string(val);
 		} else if (0 == strcmp(key, "http_max_total_connections")) {
 			worker_info->http_max_total_connections =
 					json_object_get_int64(val);
@@ -326,21 +319,11 @@ static json_bool parse_json_config(json_object *config,
 		} else if (0 == strcmp(key, "http_verbose")) {
 			worker_info->http_verbose = json_object_get_int64(val);
 		} else if (0 == strcmp(key, "http_insecure")) {
-#ifdef HAVE_RBHTTP
 			worker_info->http_insecure = json_object_get_int64(val);
-#else
-			rdlog(LOG_ERR,
-			      "rb_monitor does not have librbhttp "
-			      "support, so %s key is invalid. Please "
-			      "compile it with %s",
-			      key,
-			      ENABLE_RBHTTP_CONFIGURE_OPT);
-#endif
 		} else if (0 == strcmp(key, "rb_http_max_messages")) {
 			worker_info->rb_http_max_messages =
 					json_object_get_int64(val);
 		} else if (0 == strcmp(key, "rb_http_mode")) {
-#ifdef HAVE_RBHTTP
 			const char *sval = json_object_get_string(val);
 			if (!sval) {
 				rdlog(LOG_ERR, "Invalid rb_http_mode");
@@ -352,10 +335,10 @@ static json_bool parse_json_config(json_object *config,
 				rdlog(LOG_ERR, "Invalid rb_http_mode %s", sval);
 			}
 #else
+		} else if (0 == strncmp(key, "http_", strlen("http_"))) {
 			rdlog(LOG_ERR,
-			      "rb_monitor does not have librbhttp "
-			      "support, so %s key is invalid. Please "
-			      "compile it with %s",
+			      "rb_monitor does not have librbhttp support, so"
+			      " %s key is invalid. Please compile it with %s",
 			      key,
 			      ENABLE_RBHTTP_CONFIGURE_OPT);
 #endif
