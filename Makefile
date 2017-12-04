@@ -5,7 +5,7 @@ SRCS = $(addprefix src/, \
 	main.c rb_snmp.c rb_value.c rb_zk.c rb_monitor_zk.c \
 	rb_sensor.c rb_sensor_queue.c rb_array.c rb_sensor_monitor.c \
 	rb_sensor_monitor_array.c rb_message_list.c rb_libmatheval.c \
-	rb_json.c poller/system.c)
+	rb_json.c snmp/traps.c poller/system.c)
 OBJS = $(SRCS:.c=.o)
 TESTS_PY = $(wildcard tests/0*.py)
 VERSION_H = src/version.h

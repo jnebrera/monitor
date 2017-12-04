@@ -19,10 +19,11 @@
 
 #include "config.h"
 
-#include "utils.h"
-
 #include "rb_sensor.h"
 #include "rb_sensor_queue.h"
+#include "snmp/traps.h"
+
+#include "utils.h"
 
 #ifdef HAVE_ZOOKEEPER
 #include "rb_monitor_zk.h"
@@ -731,6 +732,7 @@ int main(int argc, char *argv[]) {
 			json_tokener_parse(str_default_config);
 	struct _worker_info worker_info;
 	struct _main_info main_info = {0};
+	uint16_t snmp_trap_port = 0;
 	int debug_severity = DEFAULT_LOG_LEVEL;
 	pthread_t rdkafka_delivery_reports_poll_thread;
 
@@ -753,7 +755,7 @@ int main(int argc, char *argv[]) {
 	ret = parse_json_config(default_config, &worker_info, &main_info);
 	assert(ret == TRUE);
 
-	while ((opt = getopt(argc, argv, "gc:hvd:")) != -1) {
+	while ((opt = getopt(argc, argv, "gc:hvd:t::")) != -1) {
 		switch (opt) {
 		case 'h':
 			printHelp(argv[0]);
@@ -777,6 +779,30 @@ int main(int argc, char *argv[]) {
 
 			break;
 		}
+		case 't': {
+			if (!optarg) {
+				snmp_trap_port = SNMP_TRAP_PORT;
+				break;
+			}
+
+			char *endptr;
+			unsigned long snmp_trap_port_ul =
+					strtoul(optarg, &endptr, 10);
+			if (snmp_trap_port_ul == 0) {
+				rdlog(LOG_ERR, "Invalid TRAP port %s", optarg);
+				exit(1);
+			}
+
+			if (snmp_trap_port_ul > (uint16_t)-1) {
+				rdlog(LOG_ERR,
+				      "Trap port greater than %" PRIu16,
+				      (uint16_t)-1);
+				exit(-1);
+			}
+
+			snmp_trap_port = (uint16_t)snmp_trap_port_ul;
+		}
+
 		default:
 			printHelp(argv[0]);
 			exit(1);
@@ -904,6 +930,13 @@ int main(int argc, char *argv[]) {
 	if (!sensors_array) {
 		rdlog(LOG_ERR, "Couldn't create sensor array (OOM?)");
 		exit(1);
+	}
+
+	if (snmp_trap_port) {
+
+		// netsnmp_trapd_handler *add_rc =
+		// netsnmp_add_default_traphandler(Netsnmp_Trap_Handler*
+		// handler);
 	}
 
 	init_snmp("redBorder-monitor");
