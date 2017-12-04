@@ -131,8 +131,8 @@ process_monitor_value_v_print(const rb_monitor_t *monitor,
 #define SWAP(a, b)                                                             \
 	do {                                                                   \
 		typeof(a) tmp = a;                                             \
-		a = b;                                                         \
-		b = tmp;                                                       \
+		(a) = b;                                                         \
+		(b) = tmp;                                                       \
 	} while (0)
 
 /** Print all elements of new array that have changed

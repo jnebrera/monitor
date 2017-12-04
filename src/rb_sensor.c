@@ -233,7 +233,7 @@ static bool sensor_parse_snmp(rb_sensor_t *sensor, json_object *sensor_info) {
 	snmp_sess_init(&sess_config);
 
 #define UPDATE_MEMBER(sess, member, parse_cb, sensor_json, sensor_option_name) \
-	sess.member = parse_cb(sensor_json, sensor_option_name, sess.member)
+	sess.member = parse_cb(sensor_json, sensor_option_name, (sess).member)
 
 	const char *snmp_version = PARSE_CJSON_CHILD_STR(
 			sensor_info, "snmp_version", NULL);

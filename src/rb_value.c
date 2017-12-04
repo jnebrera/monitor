@@ -144,7 +144,7 @@ print_monitor_value_enrichment(struct printbuf *buf,
 	}
 }
 
-#define NO_INSTANCE -1
+#define NO_INSTANCE (-1)
 static void print_monitor_value0(rb_message *message,
 				 const struct monitor_value *monitor_value,
 				 const rb_monitor_t *monitor,

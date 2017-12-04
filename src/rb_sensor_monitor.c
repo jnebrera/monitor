@@ -350,8 +350,8 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 
 #define RB_MONITOR_ENRICHMENT_STR(mkey, mval)                                  \
 	{                                                                      \
-		.key = mval ? mkey : NULL,                                     \
-		.val = mval ? json_object_new_string(mval) : NULL,             \
+		.key = (mval) ? (mkey) : NULL,                                     \
+		.val = (mval) ? json_object_new_string(mval) : NULL,             \
 	}
 
 	// clang-format off
