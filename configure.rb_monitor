@@ -7,7 +7,7 @@ mkl_require atomics must pass
 
 #mkl_mkvar_append CPPFLAGS CPPFLAGS "-DFORTIFY_SOURCE=2"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-DNDEBUG"
-mkl_mkvar_append CPPFLAGS CPPFLAGS "-std=gnu99"
+mkl_mkvar_append CPPFLAGS CPPFLAGS "-std=gnu11"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-D_GNU_SOURCE"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wunused -Wcast-align -Wdisabled-optimization -Winit-self"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wlogical-op -Wmissing-include-dirs -Wstrict-overflow=5"
