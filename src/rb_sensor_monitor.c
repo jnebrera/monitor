@@ -877,8 +877,9 @@ process_novector_monitor(const char *value_buf, double value, time_t now) {
 static size_t vector_elements(const char *haystack, const char *splittok) {
 	size_t ret = 1;
 	for (ret = 1; (haystack = strstr(haystack, splittok));
-	     haystack += strlen(splittok), ++ret)
+	     haystack += strlen(splittok), ++ret) {
 		;
+	}
 	return ret;
 }
 

@@ -266,8 +266,9 @@ print_monitor_value(const struct monitor_value *monitor_value,
 static size_t pos_array_length(const ssize_t *pos) {
 	assert(pos);
 	size_t i = 0;
-	for (i = 0; - 1 != pos[i]; ++i)
+	for (i = 0; - 1 != pos[i]; ++i) {
 		;
+	}
 	return i;
 }
 
