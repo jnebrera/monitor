@@ -739,6 +739,7 @@ static void print_lib_versions(void) {
 }
 
 int main(int argc, char *argv[]) {
+	static const int DEFAULT_LOG_LEVEL = LOG_INFO;
 	bool ret;
 	char *config_path = NULL;
 	char opt;
@@ -747,7 +748,7 @@ int main(int argc, char *argv[]) {
 			json_tokener_parse(str_default_config);
 	struct _worker_info worker_info;
 	struct _main_info main_info = {0};
-	int debug_severity = LOG_INFO;
+	int debug_severity = DEFAULT_LOG_LEVEL;
 	pthread_t rdkafka_delivery_reports_poll_thread;
 
 	memset(&worker_info, 0, sizeof(worker_info));
@@ -780,9 +781,19 @@ int main(int argc, char *argv[]) {
 		case 'c':
 			config_path = optarg;
 			break;
-		case 'd':
-			debug_severity = atoi(optarg);
+		case 'd': {
+			char *endptr;
+			debug_severity = strtol(optarg, &endptr, 0);
+			if (endptr != '\0') {
+				rdlog(LOG_ERR,
+				      "Not valid %d debug value. Using "
+				      "LOG_INFO",
+				      debug_severity);
+				debug_severity = DEFAULT_LOG_LEVEL;
+			}
+
 			break;
+		}
 		default:
 			printHelp(argv[0]);
 			exit(1);

@@ -350,8 +350,8 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 
 #define RB_MONITOR_ENRICHMENT_STR(mkey, mval)                                  \
 	{                                                                      \
-		.key = (mval) ? (mkey) : NULL,                                     \
-		.val = (mval) ? json_object_new_string(mval) : NULL,             \
+		.key = (mval) ? (mkey) : NULL,                                 \
+		.val = (mval) ? json_object_new_string(mval) : NULL,           \
 	}
 
 	// clang-format off
@@ -908,9 +908,12 @@ static bool extract_vector_value(const char *vector_values,
 		assert(timestamp);
 
 		/* Search timestamp first */
-		const char *timestamp_end =
-				strstr(vector_values, timestamp_sep);
-		if (NULL == timestamp_end || timestamp_end >= end_token) {
+		char *timestamp_end;
+		*timestamp = strtol(vector_values, &timestamp_end, 10);
+
+		if (unlikely(strncmp(timestamp_end,
+				     timestamp_sep,
+				     strlen(timestamp_sep)))) {
 			rdlog(LOG_ERR,
 			      "Couldn't find timestamp separator [%s] in "
 			      "[%*.s]",
@@ -919,9 +922,6 @@ static bool extract_vector_value(const char *vector_values,
 			      vector_values);
 			return false;
 		}
-
-		/// We can trust that timestamp separator token are not digits
-		sscanf(vector_values, "%tu", timestamp);
 		vector_values = timestamp_end + strlen(timestamp_sep);
 	}
 
