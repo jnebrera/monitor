@@ -64,53 +64,56 @@ bool snmp_solve_response(char *value_buf,
 		      "Snmp error: %s",
 		      snmp_api_errstring(snmp_sess_session(session->sessp)
 							 ->s_snmp_errno));
-		// rdlog(LOG_ERR,"Error in packet.Reason:
-		// %s",snmp_errstring(response->errstat));
-	} else if (NULL == response) {
-		rdlog(LOG_ERR, "No SNMP response given.");
-	} else {
-		rdlog(LOG_DEBUG,
-		      "SNMP OID %s response type %d: %s",
-		      oid_string,
-		      response->variables->type,
-		      value_buf);
-		const size_t effective_len = RD_MIN(
-				value_buf_len, response->variables->val_len);
-
-		// See in /usr/include/net-snmp/types.h
-		switch (response->variables->type) {
-		case ASN_GAUGE:
-		case ASN_INTEGER:
-			snprintf(value_buf,
-				 value_buf_len,
-				 "%ld",
-				 *response->variables->val.integer);
-			*number = *response->variables->val.integer;
-			ret = 1;
-			break;
-		case ASN_OCTET_STR:
-			if (effective_len == 0) {
-				ret = 0;
-				break;
-			}
-
-			snprintf(value_buf,
-				 value_buf_len,
-				 "%.*s",
-				 (int)response->variables->val_len,
-				 response->variables->val.string);
-
-			*number = strtod(value_buf, NULL);
-			ret = 1;
-			break;
-
-		default:
-			rdlog(LOG_WARNING,
-			      "Unknow variable type %d in SNMP response",
-			      response->variables->type);
-		};
+		goto err;
 	}
 
+	if (NULL == response) {
+		rdlog(LOG_ERR, "No SNMP response given.");
+		goto err;
+	}
+
+	rdlog(LOG_DEBUG,
+	      "SNMP OID %s response type %d: %s",
+	      oid_string,
+	      response->variables->type,
+	      value_buf);
+	const size_t effective_len =
+			RD_MIN(value_buf_len, response->variables->val_len);
+
+	// See in /usr/include/net-snmp/types.h
+	switch (response->variables->type) {
+	case ASN_GAUGE:
+	case ASN_INTEGER:
+		snprintf(value_buf,
+			 value_buf_len,
+			 "%ld",
+			 *response->variables->val.integer);
+		*number = *response->variables->val.integer;
+		ret = 1;
+		break;
+	case ASN_OCTET_STR:
+		if (effective_len == 0) {
+			ret = 0;
+			break;
+		}
+
+		snprintf(value_buf,
+			 value_buf_len,
+			 "%.*s",
+			 (int)response->variables->val_len,
+			 response->variables->val.string);
+
+		*number = strtod(value_buf, NULL);
+		ret = 1;
+		break;
+
+	default:
+		rdlog(LOG_WARNING,
+		      "Unknow variable type %d in SNMP response",
+		      response->variables->type);
+	};
+
+err:
 	if (response) {
 		snmp_free_pdu(response);
 	}
