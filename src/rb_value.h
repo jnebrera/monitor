@@ -75,12 +75,17 @@ struct monitor_value *new_monitor_value_array(size_t n_children,
 					      struct monitor_value **children,
 					      struct monitor_value *split_op);
 
-#ifdef MONITOR_VALUE_MAGIC
-#define rb_monitor_value_assert(monitor)                                       \
-	assert(MONITOR_VALUE_MAGIC == (monitor)->magic)
-#else
-#define rb_monitor_value_assert(monitor)
-#endif
+/// Casts a void pointer to an rb_monitor_value one.
+#define rb_monitor_value_cast(t_mv)                                            \
+	({                                                                     \
+		union {                                                        \
+			const struct monitor_value *mv;                        \
+			typeof(t_mv) ret;                                      \
+		} rb_monitor_value_cast = {.ret = t_mv};                       \
+		assert(MONITOR_VALUE_MAGIC ==                                  \
+		       rb_monitor_value_cast.mv->magic);                       \
+		rb_monitor_value_cast.ret;                                     \
+	})
 
 void rb_monitor_value_done(struct monitor_value *mv);
 
@@ -125,11 +130,7 @@ rb_monitor_value_array_at(rb_monitor_value_array_t *array, size_t i)
 		__attribute__((unused));
 static struct monitor_value *
 rb_monitor_value_array_at(rb_monitor_value_array_t *array, size_t i) {
-	struct monitor_value *ret = array->elms[i];
-	if (ret) {
-		rb_monitor_value_assert(ret);
-	}
-	return ret;
+	return rb_monitor_value_cast(array->elms[i]);
 }
 
 /// @todo delete this FW declarations, print should not be here
