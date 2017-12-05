@@ -52,7 +52,6 @@ rb_monitor_t *rb_monitors_array_elm_at(rb_monitors_array_t *array, size_t i);
   @param monitors Array of monitors to ask
   @param last_known_monitor_values Last monitor values, to be able to compare
   @param monitors_deps Monitor dependencies
-  @param snmp_params SNMP connection parameters
   @param ret Message returning function
   @warning This function assumes ALL fields of sensor_data will be populated */
 bool process_monitors_array(struct rb_sensor_s *sensor,
