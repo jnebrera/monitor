@@ -140,45 +140,6 @@ Please note that If you do this kind of operation, it will apply for each vector
 
 Blanks are handled this way: If one of the vector has a blank element, it is assumed as 0, for operation result and for split operation result.
 
-### Monitors groups
-If you need to separate monitors of the same sensor in different groups, you can use `group_id` monitor parameter. This way, you can use the same monitors names and do operations between them without mix variables.
-
-For example, you can monitor the received bytes of different interfaces (rb_monitor `instances`) on different vlans (rb_monitor `groups`, assuming that all interfaces are untagged) this way:
-
-```json
-"monitors"[
-  {"name": "packets_received"  , "system": "get_rcv_pkts.sh 1'", "unit": "pkts", "split":";", "group_id":1,"group_name":"VLAN-1", "send":0},
-  {"name": "packets_drop"  , "system": "get_drop_pkts.sh 1", "unit": "pkts", "split":",", "group_id":1,"group_name":"VLAN-1", "send":0},
-  {"name": "packets_drop_%"  , "op": "100*(packets_drop)/(packets_received+packets_drop)", "unit": "%", "split":";","split-op":"mean","instance_prefix": "interface-", "name_split_suffix":"_per_interface", "group_id":1,"group_name":"VLAN-1"},
-
-  {"name": "packets_received"  , "system": "get_rcv_pkts.sh 2", "unit": "pkts", "split":";", "group_id":2,"group_name":"VLAN-2", "send":0},
-  {"name": "packets_drop"  , "system": "get_drop_pkts.sh 2", "unit": "pkts", "split":",", "group_id":2,"group_name":"VLAN-2", "send":0},
-  {"name": "packets_drop_%"  , "op": "100*(packets_drop)/(packets_received+packets_drop)", "unit": "%", "split":";","instance_prefix": "interface-", "name_split_suffix":"_per_interface", "group_id":2,"group_name":"VLAN-2"},]
-```
-
-Assuming `get_rcv_pkts.sh` and `get_drop_pkts.sh` gets all vlan `$1` interface packets joined by `;`, and that they returns in execution this values:
-
-| Script | Vlan  | Return |
-| --- | :---: | --- |
-| get_rcv_pkts.sh | 1 | 10;20;30 |
-| get_rcv_pkts.sh | 1 | 1;1;1 |
-| get_rcv_pkts.sh | 2 | 40;50;60 |
-| get_rcv_pkts.sh | 2 | 2;2;2 |
-
-You will get the next output:
-
-```json
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%_per_instance","instance":"interface-0","value":"10.000000","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%_per_instance","instance":"interface-1","value":"5.000000","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%_per_instance","instance":"interface-2","value":"2.500000","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%","value":"5.833333","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%_per_instance","instance":"interface-0","value":"5.000000","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%_per_instance","instance":"interface-1","value":"4.000000","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%_per_instance","instance":"interface-2","value":"3.33333","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-{"timestamp":1469188000,"sensor_name":"my-sensor","monitor":"packets_drop_%","value":"4.111111","type":"system","unit":"%","group_name":"VLAN-1","group_id":1}
-```
-
 ### Sending custom data in messages
 You can send attach any information you want in sent monitors if you use `enrichment` keyword, and adding an object. If you add it to a sensor, all monitors will be enrichment with that information; if you add it to a monitor, only that monitor will be enriched with the new JSON object.
 

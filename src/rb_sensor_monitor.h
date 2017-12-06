@@ -94,12 +94,6 @@ const char *rb_monitor_name_split_suffix(const rb_monitor_t *monitor);
   */
 const char *rb_monitor_name(const rb_monitor_t *monitor);
 
-/** Gets monitor group_id
-  @param monitor Monitor to get data
-  @return requested data
-  */
-const char *rb_monitor_group_id(const rb_monitor_t *monitor);
-
 /** Gets monitor integer status
   @param monitor Monitor to get data
   @return requested data

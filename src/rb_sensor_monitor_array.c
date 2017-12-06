@@ -135,21 +135,13 @@ bool process_monitors_array(rb_sensor_t *sensor,
 /** Get a monitor position
   @param monitors_array Array of monitors
   @param name Name of monitor to find
-  @param group_id Group ip of monitor
   @return position of the monitor, or -1 if it couldn't be found
   */
-static ssize_t find_monitor_pos(const rb_monitors_array_t *monitors_array,
-				const char *name,
-				const char *group_id) {
+static ssize_t
+find_monitor_pos(const rb_monitors_array_t *monitors_array, const char *name) {
 	for (size_t i = 0; i < monitors_array->count; ++i) {
 		const char *i_name = rb_monitor_name(monitors_array->elms[i]);
-		const char *i_gid =
-				rb_monitor_group_id(monitors_array->elms[i]);
-		if (0 == strcmp(name, i_name) && // If equal name
-		    ((!i_gid && !group_id)       // Both no groups
-					   // or both have group and same group
-		     ||
-		     ((i_gid && group_id) && 0 == strcmp(group_id, i_gid)))) {
+		if (0 == strcmp(name, i_name)) {
 			return (ssize_t)i;
 		}
 	}
@@ -180,9 +172,7 @@ get_monitor_dependencies(const rb_monitors_array_t *monitors_array,
 		}
 
 		for (size_t i = 0; i < vars_len; ++i) {
-			ret[i] = find_monitor_pos(monitors_array,
-						  vars[i],
-						  rb_monitor_group_id(monitor));
+			ret[i] = find_monitor_pos(monitors_array, vars[i]);
 			if (-1 == ret[i]) {
 				rdlog(LOG_ERR,
 				      "Couldn't find variable [%s] in "

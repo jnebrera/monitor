@@ -64,7 +64,6 @@ struct rb_monitor_s {
 	/** If the monitor is a vector response, each one will have a "instance"
 	  key with value instance-%d */
 	const char *instance_prefix;
-	const char *group_id; ///< Sensor group id
 	bool send;	    ///< Send the monitor to output or not
 	bool integer;	 ///< Response must be an integer
 	const char *splittok; ///< How to split response
@@ -102,10 +101,6 @@ const char *rb_monitor_instance_prefix(const rb_monitor_t *monitor) {
 
 const char *rb_monitor_name_split_suffix(const rb_monitor_t *monitor) {
 	return monitor->name_split_suffix;
-}
-
-const char *rb_monitor_group_id(const rb_monitor_t *monitor) {
-	return monitor->group_id;
 }
 
 bool rb_monitor_is_integer(const rb_monitor_t *monitor) {
@@ -202,7 +197,6 @@ void rb_monitor_done(rb_monitor_t *monitor) {
 	free_const_str(monitor->argument);
 	free_const_str(monitor->name_split_suffix);
 	free_const_str(monitor->instance_prefix);
-	free_const_str(monitor->group_id);
 	free_const_str(monitor->splittok);
 	free_const_str(monitor->splitop);
 	free_const_str(monitor->cmd_arg);
@@ -314,8 +308,6 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 			json_monitor, "name_split_suffix", NULL);
 	ret->instance_prefix = PARSE_CJSON_CHILD_DUP_STR(
 			json_monitor, "instance_prefix", NULL);
-	ret->group_id = PARSE_CJSON_CHILD_DUP_STR(
-			json_monitor, "group_id", NULL);
 	ret->send = PARSE_CJSON_CHILD_INT64(json_monitor, "send", 1);
 	ret->integer = PARSE_CJSON_CHILD_INT64(json_monitor, "integer", 0);
 	ret->type = type;

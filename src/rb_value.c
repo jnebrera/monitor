@@ -190,12 +190,6 @@ static void print_monitor_value0(rb_message *message,
 				  monitor_value->value.value);
 		}
 
-		if (rb_monitor_group_id(monitor)) {
-			sprintbuf(buf,
-				  ",\"group_id\":%s",
-				  rb_monitor_group_id(monitor));
-		}
-
 		if (monitor_enrichment) {
 			print_monitor_value_enrichment(buf, monitor_enrichment);
 		}
