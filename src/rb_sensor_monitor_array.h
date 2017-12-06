@@ -50,13 +50,11 @@ rb_monitor_t *rb_monitors_array_elm_at(rb_monitors_array_t *array, size_t i);
 /** Process all monitors in sensor, returning result in ret
   @param sensor Current sensor
   @param monitors Array of monitors to ask
-  @param last_known_monitor_values Last monitor values, to be able to compare
   @param monitors_deps Monitor dependencies
   @param ret Message returning function
-  @warning This function assumes ALL fields of sensor_data will be populated */
+  */
 bool process_monitors_array(struct rb_sensor_s *sensor,
 			    rb_monitors_array_t *monitors,
-			    rb_monitor_value_array_t *last_known_monitor_values,
 			    ssize_t **monitors_deps,
 			    rb_message_list *ret);
 

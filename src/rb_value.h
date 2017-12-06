@@ -52,7 +52,6 @@ struct monitor_value {
 	/* response */
 	union {
 		struct {
-			time_t timestamp;
 			double value;
 			bool bad_value;
 			const char *string_value;
@@ -145,18 +144,3 @@ struct rb_sensor_s;
 rb_message_array_t *
 print_monitor_value(const struct monitor_value *monitor_value,
 		    const struct rb_monitor_s *monitor);
-
-/** Compare monitor's timestamp
-  @param m1 First monitor to compare
-  @param m2 Second monitor to compare
-  @warning assert that both monitor value are type value
-  @return integer lees than, equal to, o greater than 0 if m1 timestamp is less
-  than, equal to, o greater than m2 timestamp
-  */
-static int64_t rb_monitor_value_cmp_timestamp(const struct monitor_value *m1,
-					      const struct monitor_value *m2)
-		__attribute__((unused));
-static int64_t rb_monitor_value_cmp_timestamp(const struct monitor_value *m1,
-					      const struct monitor_value *m2) {
-	return m1->value.timestamp - m2->value.timestamp;
-}

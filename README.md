@@ -140,33 +140,6 @@ Please note that If you do this kind of operation, it will apply for each vector
 
 Blanks are handled this way: If one of the vector has a blank element, it is assumed as 0, for operation result and for split operation result.
 
-### Timestamp provided on vectors
-Sometimes you don't want to send the same value twice if it is a cached value. If you can get the timestamp the system obtained the value, and you can send it in executed command (or SNMP answer), `rb_monitor` can detect it.
-
-You can specify that you want to provide timestamp with `"timestamp_given":1` in the monitor. For example, if we set this monitors:
-```json
-"monitors":[
-  {"name": "packets_received", "system": "get_pkts.sh", "name_split_suffix":"_per_interface", "split":";","split_op":"sum", "instance_prefix":"instance-", "timestamp_given":1},
-]
-```
-
-If `get_pkts.sh` returns `10:20;30:40` the first time we call it (i.e., in timestamp `10` the first interface had `20` packets, and in timestamp `30` the first interface had `40` packets. So `rb_monitor` will send to kafka:
-
-```json
-{"timestamp":10, "sensor_name":"my-sensor","monitor":"packets_received_per_interface","instance":"interface-0","value":20,"type":"system","unit":"pkts"}
-{"timestamp":30, "sensor_name":"my-sensor","monitor":"packets_received_per_interface","instance":"interface-1","value":40,"type":"system","unit":"pkts"}
-{"timestamp":50, "sensor_name":"my-sensor","monitor":"packets_received","value":60,"type":"system","unit":"pkts"}
-```
-
-Note that split op timestamp is the one in that split op is done.
-
-After it, let's suppose that `get_pkts.sh` return `10:20;60:100`. `rb_monitor` wil notice that interface 1 has not changed, so it will only send the second one, and the split op result:
-
-```json
-{"timestamp":60, "sensor_name":"my-sensor","monitor":"packets_received_per_interface","instance":"interface-1","value":100,"type":"system","unit":"pkts"}
-{"timestamp":70, "sensor_name":"my-sensor","monitor":"packets_received","value":60,"type":"system","unit":"pkts"}
-```
-
 ### Monitors groups
 If you need to separate monitors of the same sensor in different groups, you can use `group_id` monitor parameter. This way, you can use the same monitors names and do operations between them without mix variables.
 

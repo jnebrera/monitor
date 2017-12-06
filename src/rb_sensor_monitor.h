@@ -76,12 +76,6 @@ process_sensor_monitor(struct process_sensor_monitor_ctx *process_ctx,
 		       const rb_monitor_t *monitor,
 		       rb_monitor_value_array_t *op_vars);
 
-/** Gets if monitor expect timestamp
-  @param monitor Monitor to get data
-  @return requested data
-  */
-bool rb_monitor_timestamp_provided(const rb_monitor_t *monitor);
-
 /** Gets monitor instance_prefix
   @param monitor Monitor to get data
   @return requested data

@@ -161,9 +161,7 @@ static void print_monitor_value0(rb_message *message,
 				rb_monitor_enrichment(monitor);
 		// @TODO use printbuf_memappend_fast instead! */
 		sprintbuf(buf, "{");
-		sprintbuf(buf,
-			  "\"timestamp\":%lu",
-			  monitor_value->value.timestamp);
+		sprintbuf(buf, "\"timestamp\":%tu", time(NULL));
 		if (NO_INSTANCE != instance && monitor_name_split_suffix) {
 			sprintbuf(buf,
 				  ",\"monitor\":\"%s%s\"",

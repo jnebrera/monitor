@@ -43,7 +43,6 @@ struct rb_sensor_s {
 
 	struct monitor_snmp_session snmp_sess; ///< SNMP session
 	rb_monitors_array_t *monitors;	 ///< Monitors to ask for
-	rb_monitor_value_array_t *last_vals;   ///< Last values
 	ssize_t **op_vars; ///< Operation variables that needs each monitor
 	json_object *enrichment; ///< Enrichment to use in monitors
 	int refcnt;		 ///< Reference counting
@@ -180,15 +179,7 @@ sensor_common_attrs_parse_json(rb_sensor_t *sensor,
 	}
 
 	if (NULL != sensor->monitors) {
-		const size_t monitors_count = sensor->monitors->count;
 		sensor->op_vars = get_monitors_dependencies(sensor->monitors);
-		sensor->last_vals = rb_monitor_value_array_new(monitors_count);
-		if (NULL == sensor->last_vals) {
-			rdlog(LOG_CRIT, "Couldn't allocate memory for sensor");
-			goto err;
-		} else {
-			sensor->last_vals->count = monitors_count;
-		}
 	} else {
 		goto err;
 	}
@@ -306,11 +297,8 @@ sensor_common_attrs_err:
   @return true if OK, false in other case
   */
 bool process_rb_sensor(rb_sensor_t *sensor, rb_message_list *ret) {
-	return process_monitors_array(sensor,
-				      sensor->monitors,
-				      sensor->last_vals,
-				      sensor->op_vars,
-				      ret);
+	return process_monitors_array(
+			sensor, sensor->monitors, sensor->op_vars, ret);
 }
 
 /** Free allocated memory for sensor
@@ -325,13 +313,6 @@ static void sensor_done(rb_sensor_t *sensor) {
 	if (sensor->monitors) {
 		rb_monitors_array_done(sensor->monitors);
 	}
-	for (size_t i = 0; sensor->last_vals && i < sensor->last_vals->count;
-	     ++i) {
-		if (sensor->last_vals->elms[i]) {
-			rb_monitor_value_done(sensor->last_vals->elms[i]);
-		}
-	}
-	rb_monitor_value_array_done(sensor->last_vals);
 	if (sensor->enrichment) {
 		json_object_put(sensor->enrichment);
 	}

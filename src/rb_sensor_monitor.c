@@ -35,8 +35,6 @@
 #include <math.h>
 #include <matheval.h>
 
-static const char DEFAULT_TIMESTAMP_SEP[] = ":";
-
 /// X-macro to define monitor operations
 /// _X(menum,cmd,value_type,fn)
 #define MONITOR_CMDS_X                                                         \
@@ -68,7 +66,6 @@ struct rb_monitor_s {
 	const char *instance_prefix;
 	const char *group_id; ///< Sensor group id
 	bool send;	    ///< Send the monitor to output or not
-	bool timestamp_given; ///< Timestamp is given in response
 	bool integer;	 ///< Response must be an integer
 	const char *splittok; ///< How to split response
 	const char *splitop;  ///< Do a final operation with tokens
@@ -101,10 +98,6 @@ const json_object *rb_monitor_enrichment(const rb_monitor_t *monitor) {
 
 const char *rb_monitor_instance_prefix(const rb_monitor_t *monitor) {
 	return monitor->instance_prefix;
-}
-
-bool rb_monitor_timestamp_provided(const rb_monitor_t *monitor) {
-	return monitor->timestamp_given;
 }
 
 const char *rb_monitor_name_split_suffix(const rb_monitor_t *monitor) {
@@ -295,10 +288,6 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 	char *group_name = PARSE_CJSON_CHILD_DUP_STR(
 			json_monitor, "group_name", NULL);
 
-	/// @todo change to true/false
-	int aux_timestamp_given = PARSE_CJSON_CHILD_INT64(
-			json_monitor, "timestamp_given", 0);
-
 	if (aux_split_op && !valid_split_op(aux_split_op)) {
 		rdlog(LOG_WARNING,
 		      "Invalid split op %s of monitor %s",
@@ -306,13 +295,6 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 		      aux_name);
 		free(aux_split_op);
 		aux_split_op = NULL;
-	}
-
-	if (type == RB_MONITOR_T__OP && aux_timestamp_given) {
-		rdlog(LOG_WARNING,
-		      "Can't provide timestamp in op monitor (%s)",
-		      aux_name);
-		aux_timestamp_given = 0;
 	}
 
 	/// tmp monitor to locate all string parameters
@@ -334,7 +316,6 @@ static rb_monitor_t *parse_rb_monitor0(enum monitor_cmd_type type,
 			json_monitor, "instance_prefix", NULL);
 	ret->group_id = PARSE_CJSON_CHILD_DUP_STR(
 			json_monitor, "group_id", NULL);
-	ret->timestamp_given = aux_timestamp_given;
 	ret->send = PARSE_CJSON_CHILD_INT64(json_monitor, "send", 1);
 	ret->integer = PARSE_CJSON_CHILD_INT64(json_monitor, "integer", 0);
 	ret->type = type;
@@ -432,11 +413,10 @@ void destroy_process_sensor_monitor_ctx(
 
 /* FW declaration */
 static struct monitor_value *
-process_novector_monitor(const char *value_buf, double number, time_t now);
+process_novector_monitor(const char *value_buf, double number);
 
-static struct monitor_value *process_vector_monitor(const rb_monitor_t *monitor,
-						    const char *value_buf,
-						    time_t now);
+static struct monitor_value *
+process_vector_monitor(const rb_monitor_t *monitor, const char *value_buf);
 
 /** Base function to obtain an external value, and to manage it as a vector or
   as an integer
@@ -477,9 +457,9 @@ rb_monitor_get_external_value(const rb_monitor_t *monitor,
 			      monitor->name);
 			return false;
 		}
-		ret = process_novector_monitor(value_buf, number, time(NULL));
+		ret = process_novector_monitor(value_buf, number);
 	} else /* We have a vector here */ {
-		ret = process_vector_monitor(monitor, value_buf, time(NULL));
+		ret = process_vector_monitor(monitor, value_buf);
 	}
 
 	return ret;
@@ -572,14 +552,12 @@ err:
   @param f evaluator
   @param libmatheval_vars prepared libmathevals with names and values
   @param monitor Monitor operation belongs
-  @param now This time
   @return New monitor value
   */
 static struct monitor_value *
 rb_monitor_op_value0(void *f,
 		     struct libmatheval_vars *libmatheval_vars,
-		     const rb_monitor_t *monitor,
-		     const time_t now) {
+		     const rb_monitor_t *monitor) {
 
 	const char *operation = monitor->cmd_arg;
 	const double number = evaluator_evaluate(f,
@@ -603,22 +581,20 @@ rb_monitor_op_value0(void *f,
 	char val_buf[64];
 	sprintf(val_buf, "%lf", number);
 
-	return process_novector_monitor(val_buf, number, now);
+	return process_novector_monitor(val_buf, number);
 }
 
 /** Do a monitor value operation, with no array involved
   @param f Evaluator
   @param op_vars Operations variables with names
   @param monitor Montior this operation belongs
-  @param now This time
   @return new monitor value with operation result
   */
 static struct monitor_value *
 rb_monitor_op_value(void *f,
 		    rb_monitor_value_array_t *op_vars,
 		    struct libmatheval_vars *libmatheval_vars,
-		    const rb_monitor_t *monitor,
-		    const time_t now) {
+		    const rb_monitor_t *monitor) {
 
 	/* Foreach variable in operation, value */
 	for (size_t v = 0; v < op_vars->count; ++v) {
@@ -629,7 +605,7 @@ rb_monitor_op_value(void *f,
 		libmatheval_vars->values[v] = mv_v->value.value;
 	}
 
-	return rb_monitor_op_value0(f, libmatheval_vars, monitor, now);
+	return rb_monitor_op_value0(f, libmatheval_vars, monitor);
 }
 
 /** Gets an operation result of vector position i
@@ -637,7 +613,6 @@ rb_monitor_op_value(void *f,
   @param libmatheval_vars Libmatheval prepared variables
   @param v_pos Vector position we want to evaluate
   @param monitor Monitor this operation belongs
-  @param now Time of operation
   @return Montior value with vector index i of the result
   @todo merge with rb_monitor_op_value
   */
@@ -646,8 +621,7 @@ rb_monitor_op_vector_i(void *f,
 		       rb_monitor_value_array_t *op_vars,
 		       struct libmatheval_vars *libmatheval_vars,
 		       size_t v_pos,
-		       const rb_monitor_t *monitor,
-		       const time_t now) {
+		       const rb_monitor_t *monitor) {
 	/* Foreach variable in operation, use element i of vector */
 	for (size_t v = 0; v < op_vars->count; ++v) {
 		const struct monitor_value *mv_v =
@@ -667,7 +641,7 @@ rb_monitor_op_vector_i(void *f,
 		libmatheval_vars->values[v] = mv_v_i->value.value;
 	}
 
-	return rb_monitor_op_value0(f, libmatheval_vars, monitor, now);
+	return rb_monitor_op_value0(f, libmatheval_vars, monitor);
 }
 
 /** Makes a vector operation
@@ -675,15 +649,13 @@ rb_monitor_op_vector_i(void *f,
   @param op_vars Monitor values of operation variables
   @param libmatheval_vars Libmatheval variables template
   @param monitor Monitor this operation belongs
-  @param now Operation's time
   @todo op_vars should be const
   */
 static struct monitor_value *
 rb_monitor_op_vector(void *f,
 		     rb_monitor_value_array_t *op_vars,
 		     struct libmatheval_vars *libmatheval_vars,
-		     const rb_monitor_t *monitor,
-		     time_t now) {
+		     const rb_monitor_t *monitor) {
 	double sum = 0;
 	size_t count = 0;
 	const struct monitor_value *mv_0 =
@@ -703,7 +675,7 @@ rb_monitor_op_vector(void *f,
 	// Foreach member of vector
 	for (size_t i = 0; i < mv_0->array.children_count; ++i) {
 		children[i] = rb_monitor_op_vector_i(
-				f, op_vars, libmatheval_vars, i, monitor, now);
+				f, op_vars, libmatheval_vars, i, monitor);
 
 		if (NULL != children[i]) {
 			sum += children[i]->value.value;
@@ -726,8 +698,8 @@ rb_monitor_op_vector(void *f,
 			 "%lf",
 			 split_op_value);
 
-		split_op = process_novector_monitor(
-				string_value, split_op_value, now);
+		split_op = process_novector_monitor(string_value,
+						    split_op_value);
 	}
 
 	return new_monitor_value_array(
@@ -772,7 +744,6 @@ rb_monitor_get_op_result(const rb_monitor_t *monitor,
 
 	evaluator_get_variables(f, &f_vars.vars, &f_vars.vars_len);
 
-	const time_t now = time(NULL);
 	struct libmatheval_vars *libmatheval_vars =
 			op_libmatheval_vars(op_vars, f_vars.vars);
 	if (NULL == libmatheval_vars) {
@@ -784,18 +755,12 @@ rb_monitor_get_op_result(const rb_monitor_t *monitor,
 	if (mv_0) {
 		switch (mv_0->type) {
 		case MONITOR_VALUE_T__ARRAY:
-			ret = rb_monitor_op_vector(f,
-						   op_vars,
-						   libmatheval_vars,
-						   monitor,
-						   now);
+			ret = rb_monitor_op_vector(
+					f, op_vars, libmatheval_vars, monitor);
 			break;
 		case MONITOR_VALUE_T__VALUE:
-			ret = rb_monitor_op_value(f,
-						  op_vars,
-						  libmatheval_vars,
-						  monitor,
-						  now);
+			ret = rb_monitor_op_value(
+					f, op_vars, libmatheval_vars, monitor);
 			break;
 		default:
 			/// @todo error treatment
@@ -839,10 +804,9 @@ process_sensor_monitor(struct process_sensor_monitor_ctx *process_ctx,
   @param monitor Monitor to process
   @param value_buf Value in text format
   @param value Value in double format
-  @param now Time of processing
 */
 static struct monitor_value *
-process_novector_monitor(const char *value_buf, double value, time_t now) {
+process_novector_monitor(const char *value_buf, double value) {
 	struct monitor_value *mv = NULL;
 
 	rd_calloc_struct(&mv,
@@ -857,7 +821,6 @@ process_novector_monitor(const char *value_buf, double value, time_t now) {
 		mv->magic = MONITOR_VALUE_MAGIC; // just sanity check
 #endif
 		mv->type = MONITOR_VALUE_T__VALUE;
-		mv->value.timestamp = now;
 		mv->value.value = value;
 	} else {
 		rdlog(LOG_ERR,
@@ -888,42 +851,17 @@ static size_t vector_elements(const char *haystack, const char *splittok) {
   @param splittok Split token
   @param str_value Value in string format
   @param str_size str_value length
-  @param timestamp_sep Timestamp separator (if any)
-  @param timestamp If timestamp_sep is defined, extracted timestamp
   @return Next token to iterate
   */
 static bool extract_vector_value(const char *vector_values,
 				 const char *splittok,
 				 const char **str_value,
 				 size_t *str_size,
-				 double *value,
-				 const char *timestamp_sep,
-				 time_t *timestamp) {
+				 double *value) {
 
 	const char *end_token = strstr(vector_values, splittok);
 	if (NULL == end_token) {
 		end_token = vector_values + strlen(vector_values);
-	}
-
-	if (timestamp_sep) {
-		assert(timestamp);
-
-		/* Search timestamp first */
-		char *timestamp_end;
-		*timestamp = strtol(vector_values, &timestamp_end, 10);
-
-		if (unlikely(strncmp(timestamp_end,
-				     timestamp_sep,
-				     strlen(timestamp_sep)))) {
-			rdlog(LOG_ERR,
-			      "Couldn't find timestamp separator [%s] in "
-			      "[%*.s]",
-			      timestamp_sep,
-			      (int)(end_token - vector_values),
-			      vector_values);
-			return false;
-		}
-		vector_values = timestamp_end + strlen(timestamp_sep);
 	}
 
 	*value = toDouble(vector_values);
@@ -945,12 +883,10 @@ static bool extract_vector_value(const char *vector_values,
 /** Process a vector monitor
   @param monitor Monitor to process
   @param value_buf Value to process (string format)
-  @param now This time
   @todo this could be joint with operation on vector
 */
-static struct monitor_value *process_vector_monitor(const rb_monitor_t *monitor,
-						    const char *value_buf,
-						    time_t now) {
+static struct monitor_value *
+process_vector_monitor(const rb_monitor_t *monitor, const char *value_buf) {
 	const size_t n_children = vector_elements(value_buf, monitor->splittok);
 	const char *tok = NULL;
 
@@ -972,7 +908,6 @@ static struct monitor_value *process_vector_monitor(const rb_monitor_t *monitor,
 			tok += strlen(monitor->splittok);
 		}
 
-		time_t i_timestamp = 0;
 		const char *i_value_str = NULL;
 		size_t i_value_str_size = 0;
 		double i_value = 0;
@@ -985,24 +920,19 @@ static struct monitor_value *process_vector_monitor(const rb_monitor_t *monitor,
 			continue;
 		}
 
-		const bool get_value_rc = extract_vector_value(
-				tok,
-				monitor->splittok,
-				&i_value_str,
-				&i_value_str_size,
-				&i_value,
-				monitor->timestamp_given ? DEFAULT_TIMESTAMP_SEP
-							 : NULL,
-				&i_timestamp);
+		const bool get_value_rc =
+				extract_vector_value(tok,
+						     monitor->splittok,
+						     &i_value_str,
+						     &i_value_str_size,
+						     &i_value);
 
 		if (false == get_value_rc) {
 			continue;
 		}
 
-		children[count] = process_novector_monitor(
-				i_value_str,
-				i_value,
-				i_timestamp ? i_timestamp : now);
+		children[count] =
+				process_novector_monitor(i_value_str, i_value);
 
 		if (NULL != children[count]) {
 			sum += i_value;
@@ -1022,8 +952,7 @@ static struct monitor_value *process_vector_monitor(const rb_monitor_t *monitor,
 			 sizeof(split_op_result),
 			 "%lf",
 			 result);
-		split_op = process_novector_monitor(
-				split_op_result, result, now);
+		split_op = process_novector_monitor(split_op_result, result);
 	}
 
 	return new_monitor_value_array(n_children, children, split_op);
