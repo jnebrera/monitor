@@ -49,6 +49,11 @@ class TestBasic(TestMonitor):
                 # TODO
                 # Test operations with no variables involved
                 # iter(['2'])
+                # Test operations with unknown variables involved
+                # iter(['a+2'])
+                # TODO
+                # Test malformed operations
+                # iter(['6"4'])
                 )
         ] + [{
                 # Invalid operations (No 'monitor_expected_value')
