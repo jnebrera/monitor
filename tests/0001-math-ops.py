@@ -3,12 +3,19 @@
 from mon_test import TestMonitor, main
 from pysnmp.proto.api import v2c
 from itertools import chain
+import pytest
+
+
+@pytest.fixture(params=[False, True])
+def send_base_vars(request):
+    return request.param
 
 
 class TestBasic(TestMonitor):
     ''' First monitor tests'''
     def test_base(self,
                   child,
+                  send_base_vars,
                   kafka_handler):
         ''' Test for math operations '''
         n0, n1 = 3, 5
@@ -22,6 +29,7 @@ class TestBasic(TestMonitor):
                 'monitor_op_key': 'oid',
                 'monitor_op_arg': (1, i),
                 'monitor_expected_value': number,
+                'send': send_base_vars,
             } for i, number in enumerate(test_numbers)
         ] + [{
                 # Valid operations
@@ -69,7 +77,7 @@ class TestBasic(TestMonitor):
                 'timeout': 100000000,
                 'community': 'public',
                 'monitors': [{
-                    'send': 1,
+                    'send': parameter.get('send', True),
                     'name': parameter['monitor_name'],
                     parameter['monitor_op_key']: parameter['monitor_op_arg'],
                 } for parameter in test_parameters]
@@ -87,7 +95,8 @@ class TestBasic(TestMonitor):
             'monitor': parameter['monitor_name'],
             'value': '{:.6f}'.format(parameter['monitor_expected_value'])
         } for parameter in test_parameters
-          if 'monitor_expected_value' in parameter
+          if 'monitor_expected_value' in parameter and
+          parameter.get('send', True)
         ]
 
         t_locals = locals()
