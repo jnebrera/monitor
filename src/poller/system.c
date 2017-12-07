@@ -44,21 +44,23 @@ bool system_solve_response(char *buff,
 	FILE *fp = popen(command, "r");
 	if (NULL == fp) {
 		rdlog(LOG_ERR, "Cannot get system command.");
-	} else {
-		if (NULL == fgets(buff, buff_size, fp)) {
-			rdlog(LOG_ERR, "Cannot get buffer information");
-		} else {
-			rdlog(LOG_DEBUG, "System response: %s", buff);
-			trim_end(buff);
-			char *endPtr;
-			*number = strtod(buff, &endPtr);
-			if (buff != endPtr) {
-				ret = true;
-			}
-		}
-
-		fclose(fp);
+		return false;
 	}
 
+	if (NULL == fgets(buff, buff_size, fp)) {
+		rdlog(LOG_ERR, "Cannot get buffer information");
+		goto err;
+	}
+
+	rdlog(LOG_DEBUG, "System response: %s", buff);
+	trim_end(buff);
+	char *endPtr;
+	*number = strtod(buff, &endPtr);
+	if (buff != endPtr) {
+		ret = true;
+	}
+
+err:
+	fclose(fp);
 	return ret;
 }
