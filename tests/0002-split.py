@@ -20,8 +20,17 @@ VALID_SPLIT_OPS = ['sum', 'mean']
 VALID_OPERATORS = '+-*/'
 
 
-@pytest.fixture(params=[None, 'invalid'] + VALID_SPLIT_OPS) #  TODO mean
+@pytest.fixture(params=[None, 'invalid'] + VALID_SPLIT_OPS)  # TODO mean
 def split_op(request):
+    return request.param
+
+# Check for holes AND zero values, they don't mean the same because of the
+# average calculation!
+@pytest.fixture(params=[([3, 2, 1, 0], [4, 5, 6, 7]),
+                        ([None, 2, 1, 0], [None, 6, 8, 10]),
+                        ([None, 2, 1, 0], [4, 6, None, 10]),
+                        ([None, None, None, None], [None, None, None, None])])
+def tests_arrays(request):
     return request.param
 
 
@@ -29,16 +38,11 @@ class TestSplit(TestMonitor):
     ''' Test for split behavior '''
     def test_split(self,
                    child,
+                   tests_arrays,
                    name_split_suffix,
                    instance_prefix,
                    split_op,
                    kafka_handler):
-        ''' Test for array split '''
-        load_1 = [3, 2, 1, 0]
-        load_5 = [4, 5, 6, 7]
-
-        tests_arrays = [load_1, load_5]
-
         split_tok = ';'
 
         # Configuration in sensor/monitor that must be forwarded to kafka
@@ -81,7 +85,9 @@ class TestSplit(TestMonitor):
                 **monitor_base,
                 'name': 'array_{}'.format(monitor_i),
                 'system': "echo -n '{}'".format(
-                                         ';'.join(str(i) for i in test_array)),
+                                         ';'.join(str(i) if i is not None
+                                                  else ''
+                                                  for i in test_array)),
                 'split': split_tok,
             } for (monitor_i, test_array) in enumerate(tests_arrays)
         ] + [
@@ -106,6 +112,9 @@ class TestSplit(TestMonitor):
         base_config = {'sensors': [sensor_config]}
 
         eval_globals = None
+
+        def average(x): return float(sum(x))/len(x) if len(x) > 0 else 0
+
         # Kafka messages per monitor
         kafka_messages = [
             # System arrays & operations over array
@@ -118,7 +127,7 @@ class TestSplit(TestMonitor):
                 'monitor': 'array_{}{}'.format(monitor_i,
                                                name_split_suffix or ''),
                 'value': '{:.6f}'.format(value)
-             } for value_i, value in enumerate(test_array)
+             } for value_i, value in enumerate(test_array) if value is not None
              ] + ([{
                 'type': 'system',
                 'sensor_id': 1,
@@ -127,7 +136,8 @@ class TestSplit(TestMonitor):
                 'instance': None,
                 'value': '{:.6f}'.format(
                     (sum if split_op == 'sum'
-                         else lambda x: float(sum(x))/len(x))(test_array))
+                         else average)([x for x in test_array
+                                        if x is not None]))
              }] if split_op in VALID_SPLIT_OPS else [])
             for (monitor_i, test_array) in enumerate(tests_arrays)
         ] + [
@@ -141,19 +151,22 @@ class TestSplit(TestMonitor):
                 'value': eval(
                     '"{:6f}".format('+operation.replace('^', '**')+')',
                     eval_globals,
-                    {'array_0': load_1[monitor_i],
-                     'array_1': load_5[monitor_i]})
+                    {'array_0': tests_arrays[0][monitor_i],
+                     'array_1': tests_arrays[1][monitor_i]})
             } for ((name, operation, result_split_op), monitor_i)
-              in product(operations, range(len(load_1)))]
+              in product(operations, range(len(tests_arrays[0])))
+              if tests_arrays[0][monitor_i] is not None and
+              tests_arrays[1][monitor_i] is not None]
         ] if (name_split_suffix and instance_prefix) else []
 
         # Flatten kafka messages
         kafka_messages = sum(kafka_messages, [])
 
         # Filter operation kafka messages with 0 values, monitor will never
-        # send them
+        # send them.
         kafka_messages = [m for m in kafka_messages
-                          if m['type'] == 'system' or
+                          if (m['type'] == 'system' and
+                              m['instance'] is not None) or
                           '0.000000' != m['value']]
 
         t_locals = locals()

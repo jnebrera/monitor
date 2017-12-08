@@ -35,6 +35,8 @@ class KafkaHandler(object):
         assert(len(expected_dimensions) == len(received_messages))
         for dimensions, message in zip(expected_dimensions, received_messages):
             message = json.loads(message)
+            print('Dimensions: {}'.format(dimensions))
+            print('Message: {}'.format(message))
             for dimension, value in dimensions.items():
                 if value is None:
                     assert(dimension not in message)
