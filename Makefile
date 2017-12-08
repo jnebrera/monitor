@@ -18,6 +18,11 @@ TESTS_VALGRIND_XML = $(TESTS_MEM_XML) $(TESTS_HELGRIND_XML) $(TESTS_DRD_XML)
 TESTS_XML = $(TESTS_CHECKS_XML) $(TESTS_VALGRIND_XML)
 COV_FILES = $(foreach ext,gcda gcno, $(SRCS:.c=.$(ext)) $(TESTS_C:.c=.$(ext)))
 
+PYTEST ?= py.test
+PYTEST_JOBS ?= 0
+ifneq ($(PYTEST_JOBS), 0)
+pytest_jobs_arg := -n $(PYTEST_JOBS)
+endif
 VALGRIND ?= valgrind
 CLANG_FORMAT ?= clang-format-3.8
 SUPPRESSIONS_FILE ?= tests/valgrind.suppressions
@@ -96,7 +101,7 @@ tests/%.drd.xml: tests/%.py $(BIN)
 
 tests/%.xml: tests/%.py $(BIN)
 	@echo "$(MKL_YELLOW) Generating $@$(MKL_CLR_RESET)"
-	py.test-3 --junitxml="$@" "./$<" >/dev/null 2>&1
+	$(PYTEST) $(pytest_jobs_arg) --junitxml="$@" "./$<" >/dev/null 2>&1
 
 check_coverage:
 	@( if [[ "x$(WITH_COVERAGE)" == "xn" ]]; then \
