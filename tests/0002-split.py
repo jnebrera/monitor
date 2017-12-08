@@ -16,9 +16,11 @@ def instance_prefix(request):
     return request.param
 
 VALID_SPLIT_OPS = ['sum', 'mean']
+# TODO: VALID_OPERATORS = '+-*/^'
+VALID_OPERATORS = '+-*/'
 
-# @pytest.fixture(params=[None, 'sum', 'avg', 'mean'])
-@pytest.fixture(params=[None, 'invalid'] + VALID_SPLIT_OPS)
+
+@pytest.fixture(params=[None, 'invalid'] + VALID_SPLIT_OPS) #  TODO mean
 def split_op(request):
     return request.param
 
@@ -55,23 +57,58 @@ class TestSplit(TestMonitor):
             if t_locals.get(k) is not None
         }
 
-        sensor_config = {
-            **sensor_config_base,
-            'timeout': 100000000,
-            'community': 'public',
-            'monitors': [{
+        operations = chain(
+            # Test all libmatheval supported binary operations and do all
+            # operations on result
+            product(('array_0' + str.replace(operator, '^', '**') + 'array_1'
+                     for operator in VALID_OPERATORS),
+                    VALID_SPLIT_OPS),
+            # TODO
+            # Test operation on constants
+            # iter(['100*array_1', '-array_1']),
+            # Test variable(op)array
+            # iter(['x+array'])
+            # Test const(op)array
+            # iter([2+array])
+            )
+
+        # Need to make a list in order to avoid generation exhaustion
+        operations = [('op_{}_{}'.format(operation, result_op),
+                       operation,
+                       result_op) for (operation, result_op) in operations]
+
+        monitors_config = [{
                 **monitor_base,
                 'name': 'array_{}'.format(monitor_i),
                 'system': "echo -n '{}'".format(
                                          ';'.join(str(i) for i in test_array)),
                 'split': split_tok,
-            } for (monitor_i, test_array) in enumerate(tests_arrays)]
+            } for (monitor_i, test_array) in enumerate(tests_arrays)
+        ] + [
+            {
+                **{'split_op': v for v in (result_split_op)
+                    if result_split_op != ' '},
+                'name_split_suffix': name_split_suffix,
+                'instance_prefix': instance_prefix,
+                'name': name,
+                'op': operation,
+            } for (name, operation, result_split_op) in operations
+            if (name_split_suffix and instance_prefix)
+        ]
+
+        sensor_config = {
+            **sensor_config_base,
+            'timeout': 100000000,
+            'community': 'public',
+            'monitors': monitors_config,
         }
 
         base_config = {'sensors': [sensor_config]}
 
+        eval_globals = None
         # Kafka messages per monitor
         kafka_messages = [
+            # System arrays & operations over array
             [{
                 **{'instance': '{}{}'.format(instance_prefix, value_i)
                                if instance_prefix else None},
@@ -82,7 +119,7 @@ class TestSplit(TestMonitor):
                                                name_split_suffix or ''),
                 'value': '{:.6f}'.format(value)
              } for value_i, value in enumerate(test_array)
-             ] + [{
+             ] + ([{
                 'type': 'system',
                 'sensor_id': 1,
                 'sensor_name': 'sensor-test-01',
@@ -91,11 +128,33 @@ class TestSplit(TestMonitor):
                 'value': '{:.6f}'.format(
                     (sum if split_op == 'sum'
                          else lambda x: float(sum(x))/len(x))(test_array))
-             }] if split_op in VALID_SPLIT_OPS else []
-            for (monitor_i, test_array) in enumerate(tests_arrays)]
+             }] if split_op in VALID_SPLIT_OPS else [])
+            for (monitor_i, test_array) in enumerate(tests_arrays)
+        ] + [
+            # Operations over arrays & result operations
+            [{
+                'instance': '{}{}'.format(instance_prefix, monitor_i),
+                'type': 'op',
+                'sensor_id': 1,
+                'sensor_name': 'sensor-test-01',
+                'monitor': '{}{}'.format(name, name_split_suffix or ''),
+                'value': eval(
+                    '"{:6f}".format('+operation.replace('^', '**')+')',
+                    eval_globals,
+                    {'array_0': load_1[monitor_i],
+                     'array_1': load_5[monitor_i]})
+            } for ((name, operation, result_split_op), monitor_i)
+              in product(operations, range(len(load_1)))]
+        ] if (name_split_suffix and instance_prefix) else []
 
         # Flatten kafka messages
         kafka_messages = sum(kafka_messages, [])
+
+        # Filter operation kafka messages with 0 values, monitor will never
+        # send them
+        kafka_messages = [m for m in kafka_messages
+                          if m['type'] == 'system' or
+                          '0.000000' != m['value']]
 
         t_locals = locals()
         self.base_test(child_argv_str=t_locals['child'],
