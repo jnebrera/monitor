@@ -119,6 +119,8 @@ jobs:
   release:
     <<: *T_dev_run
     environment:
+      - PYTEST_JOBS: 16
+      - PYTEST: py.test-3
       - docker_cmds: |
           ./configure --bootstrap
           make
@@ -128,6 +130,8 @@ jobs:
   assertions:
     <<: *T_dev_run
     environment:
+      - PYTEST_JOBS: 16
+      - PYTEST: py.test-3
       - docker_cmds: |
           ./configure --bootstrap
           sed -i 's/-DNDEBUG//g' Makefile.config
@@ -137,6 +141,8 @@ jobs:
   coverage:
     <<: *T_dev_run
     environment:
+      - PYTEST_JOBS: 16
+      - PYTEST: py.test-3
       - docker_cmds: |
           ./configure --bootstrap --disable-optimization --enable-coverage
           make

@@ -20,12 +20,12 @@ define(builddeps,bash build-base ca-certificates librdkafka-dev \
 		ncurses-dev expat-dev slang-dev python3-dev py3-snmp py3-pytest \
 		net-snmp-libs)dnl
 dnl
-ifelse(version,devel,
+ifelse(version,devel,`
 RUN apk add --no-cache builddeps && \
 	apk add --no-cache \
 		--repository \
 		http://dl-cdn.alpinelinux.org/alpine/edge/testing/ lcov && \
-	pip3 install pykafka && \
+	pip3 install --no-cache-dir pykafka pytest-xdist && \
 	mkdir -p /usr/local/share/snmp; ln -s /usr/{,local}/share/snmp && \
 	update-ca-certificates && \
 	wget -q -O - \
@@ -33,7 +33,9 @@ RUN apk add --no-cache builddeps && \
 		| bsdtar -xf- && \
 		(cd xml-coreutils-master; bash ./configure --prefix=/usr; \
 			chmod +x config/install-sh; make; make install) && \
-		rm -rfv xml-coreutils-master,
+		rm -rfv xml-coreutils-master
+ENV PYTEST py.test-3
+ENV PYTEST_JOBS 4',
 COPY releasefiles /app/
 COPY mibfiles /usr/local/share/snmp/mibs/
 ENTRYPOINT /app/monitor_setup.sh)
