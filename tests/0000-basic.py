@@ -87,7 +87,8 @@ class TestBasic(TestMonitor):
                            'sensor_name': 'sensor-test-01',
                            'unit': '%',
                            'monitor': 'monitor_' + str(i),
-                           'value': i} for i in range(n_monitors)]
+                           'value': '{:6f}'.format(i)
+                           } for i in range(n_monitors)]
 
         # Test with no unit
         del sensor_config['monitors'][-2]['unit']

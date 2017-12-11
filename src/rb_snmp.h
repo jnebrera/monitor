@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "rb_value.h"
+
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 
@@ -39,20 +41,12 @@ bool new_snmp_session(struct monitor_snmp_session *ss, netsnmp_session *params);
 
 /**
   SNMP request & response adaption.
-  @param value_buf   Return buffer where the response will be saved (text
-  format)
-  @param value_buf_len Buffer value_buf length
-  @param number      If possible, the response will be saved in double format
-  here
-  @param _session    SNMP session to use
-  @param _oid_string String representing oid
-  @return            0 if number was not setted; non 0 otherwise.
+  @param oid_string String representing oid
+  @param session    SNMP session to use
+  @return           New monitor value
  */
-bool snmp_solve_response(char *value_buf,
-			 size_t value_buf_len,
-			 double *number,
-			 struct monitor_snmp_session *session,
-			 const char *oid_string);
+monitor_value *snmp_solve_response(const char *oid_string,
+				   struct monitor_snmp_session *session);
 
 void destroy_snmp_session(struct monitor_snmp_session *);
 

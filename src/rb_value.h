@@ -30,31 +30,32 @@
 #include <signal.h>
 #include <stdbool.h>
 
+typedef struct monitor_value {
 #ifndef NDEBUG
 #define MONITOR_VALUE_MAGIC 0x010AEA1C010AEA1CL
-#endif
-
-/// @todo make the vectors entry here.
-/// @note if you edit this structure, remember to edit monitor_value_copy
-struct monitor_value {
-#ifdef MONITOR_VALUE_MAGIC
 	uint64_t magic; // Private data, don't need to use them outside.
 #endif
 
 	/// Type of monitor value
 	enum monitor_value_type {
-		/// This is a raw value
-		MONITOR_VALUE_T__VALUE,
-		/// This is an array of monitors values
-		MONITOR_VALUE_T__ARRAY,
+		MONITOR_VALUE_T__BAD, ///< This is a bad array value
+		MONITOR_VALUE_T__DOUBLE,
+		MONITOR_VALUE_T__STRING,
+		MONITOR_VALUE_T__ARRAY, ///< This is an array of monitors values
 	} type;
+
+	// Private data - Do not use directly
 
 	/* response */
 	union {
 		struct {
-			double value;
-			bool bad_value;
-			const char *string_value;
+			union {
+				double value_d;
+				struct {
+					size_t size;
+					char *buf;
+				} value_s;
+			};
 		} value;
 		struct {
 			size_t children_count;
@@ -62,17 +63,43 @@ struct monitor_value {
 			struct monitor_value **children;
 		} array;
 	};
-};
+} monitor_value;
 
-/** Creates a new monitor value array
- * @param n_children Number of childrens
- * @param children Childrens
- * @param split_op Split operation
- * @return New monitor value of array type
+/// Returns the double value of monitor. If type is not a double, value is
+/// converted.
+double monitor_value_double(const struct monitor_value *mv);
+
+/// Returns new monitor value
+monitor_value *new_monitor_value_int(long i);
+monitor_value *new_monitor_value_double(double dbl);
+
+/// Creates a new monitor value in string format. The string value is borrowed.
+monitor_value *new_monitor_value_strn(char *str, size_t str_len);
+
+/// Creates a new string monitor value from fstream first line
+monitor_value *new_monitor_value_fstream(FILE *stream);
+
+// clang-format off
+#define new_monitor_value(t_value)                                             \
+	_Generic((t_value) + 0,                                                \
+			 long: new_monitor_value_int,                          \
+			 double: new_monitor_value_double)(t_value);
+// clang-format on
+
+/** Creates a new monitor value array from a string monitor value.
+  @param mv Source and destination monitor value.
+  @param split_tok Token to split string
+  @param split_op Operation to do over result array ('sum' or 'mean')
  */
-struct monitor_value *new_monitor_value_array(size_t n_children,
-					      struct monitor_value **children,
-					      struct monitor_value *split_op);
+bool new_monitor_value_array_from_string(struct monitor_value *mv,
+					 const char *split_tok,
+					 const char *split_op);
+
+/** Creates a new monitor value from children and split operation result */
+struct monitor_value *
+new_monitor_value_array(size_t children_count,
+			struct monitor_value **children,
+			struct monitor_value *split_op_result);
 
 /// Casts a void pointer to an rb_monitor_value one.
 #define rb_monitor_value_cast(t_mv)                                            \
@@ -113,7 +140,7 @@ static void rb_monitor_value_array_add(rb_monitor_value_array_t *array,
   @param array Original array
   @param pos list of positions (-1 terminated)
   @return New monitor array, that needs to be free with
-	rb_monitor_value_array_done
+	  rb_monitor_value_array_done
   @note Monitors are from original array, so they should not be touched
   */
 rb_monitor_value_array_t *

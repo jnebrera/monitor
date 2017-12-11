@@ -71,16 +71,17 @@ rb_monitors_array_t *parse_rb_monitors(json_object *monitors_array_json,
   @param ret Message list to report
   */
 static void process_monitor_value(const rb_monitor_t *monitor,
-				  const struct monitor_value *monitor_value,
+				  const monitor_value *t_monitor_value,
 				  rb_message_list *ret) {
 	assert(monitor);
-	assert(monitor_value);
+	assert(t_monitor_value);
 
 	if (!rb_monitor_send(monitor)) {
 		return;
 	}
 
-	rb_message_array_t *msgs = print_monitor_value(monitor_value, monitor);
+	rb_message_array_t *msgs =
+			print_monitor_value(t_monitor_value, monitor);
 	if (msgs) {
 		rb_message_list_push(ret, msgs);
 	}

@@ -206,17 +206,6 @@ void rb_monitor_done(rb_monitor_t *monitor) {
 	free(monitor);
 }
 
-/** strtod conversion plus set errno=EINVAL if no conversion is possible
-  @param str input string
-  @return double
-  */
-static double toDouble(const char *str) {
-	char *endPtr;
-	errno = 0;
-	double d = strtod(str, &endPtr);
-	return d;
-}
-
 /** Get monitor command
   @param monitor Monitor to save command
   @param json_monitor JSON monitor to extract command
@@ -403,13 +392,6 @@ void destroy_process_sensor_monitor_ctx(
 	free(ctx);
 }
 
-/* FW declaration */
-static struct monitor_value *
-process_novector_monitor(const char *value_buf, double number);
-
-static struct monitor_value *
-process_vector_monitor(const rb_monitor_t *monitor, const char *value_buf);
-
 /** Base function to obtain an external value, and to manage it as a vector or
   as an integer
   @param monitor Monitor to process
@@ -419,39 +401,23 @@ process_vector_monitor(const rb_monitor_t *monitor, const char *value_buf);
   */
 static struct monitor_value *
 rb_monitor_get_external_value(const rb_monitor_t *monitor,
-			      bool (*get_value_cb)(char *buf,
-						   size_t bufsiz,
-						   double *number,
-						   void *ctx,
-						   const char *arg),
+			      struct monitor_value *(*get_value_cb)(
+					      const char *arg, void *ctx),
 			      void *get_value_cb_ctx) {
-	double number = 0;
-	char value_buf[BUFSIZ];
-	value_buf[0] = '\0';
-	struct monitor_value *ret = NULL;
-	const bool ok = get_value_cb(value_buf,
-				     sizeof(value_buf),
-				     &number,
-				     get_value_cb_ctx,
-				     monitor->cmd_arg);
+	struct monitor_value *ret =
+			get_value_cb(monitor->cmd_arg, get_value_cb_ctx);
 
-	if (0 == strlen(value_buf)) {
-		rdlog(LOG_WARNING, "Not seeing %s value.", monitor->name);
-		return false;
+	if (unlikely(!ret)) {
+		return NULL;
 	}
 
-	if (!monitor->splittok) {
-		if (!ok) {
-			rdlog(LOG_WARNING,
-			      "Value '%s' of [%s:%s] is not a number",
-			      value_buf,
-			      monitor->cmd_arg,
-			      monitor->name);
-			return false;
+	if (monitor->splittok) {
+		const bool array_rc = new_monitor_value_array_from_string(
+				ret, monitor->splittok, monitor->splitop);
+		if (unlikely(!array_rc)) {
+			rb_monitor_value_done(ret);
+			return NULL;
 		}
-		ret = process_novector_monitor(value_buf, number);
-	} else /* We have a vector here */ {
-		ret = process_vector_monitor(monitor, value_buf);
 	}
 
 	return ret;
@@ -468,17 +434,10 @@ static struct monitor_value *rb_monitor_get_system_external_value(
 			monitor, system_solve_response, NULL);
 }
 
-/** Convenience function */
-static bool snmp_solve_response0(char *value_buf,
-				 size_t value_buf_len,
-				 double *number,
-				 void *session,
-				 const char *oid_string) {
-	return snmp_solve_response(value_buf,
-				   value_buf_len,
-				   number,
-				   (struct monitor_snmp_session *)session,
-				   oid_string);
+/// Wrapper function to transform void -> snmp_session
+static monitor_value *
+snmp_solve_response0(const char *oid_string, void *snmp_session) {
+	return snmp_solve_response(oid_string, snmp_session);
 }
 
 /** Convenience function to obtain SNMP values */
@@ -570,10 +529,7 @@ rb_monitor_op_value0(void *f,
 		return NULL;
 	}
 
-	char val_buf[64];
-	sprintf(val_buf, "%lf", number);
-
-	return process_novector_monitor(val_buf, number);
+	return new_monitor_value(number);
 }
 
 /** Do a monitor value operation, with no array involved
@@ -593,8 +549,8 @@ rb_monitor_op_value(void *f,
 		const struct monitor_value *mv_v =
 				rb_monitor_value_array_at(op_vars, v);
 		assert(mv_v);
-		assert(MONITOR_VALUE_T__VALUE == mv_v->type);
-		libmatheval_vars->values[v] = mv_v->value.value;
+		assert(MONITOR_VALUE_T__ARRAY != mv_v->type);
+		libmatheval_vars->values[v] = monitor_value_double(mv_v);
 	}
 
 	return rb_monitor_op_value0(f, libmatheval_vars, monitor);
@@ -628,9 +584,9 @@ rb_monitor_op_vector_i(void *f,
 			return NULL;
 		}
 
-		assert(MONITOR_VALUE_T__VALUE == mv_v_i->type);
+		assert(MONITOR_VALUE_T__ARRAY != mv_v_i->type);
 
-		libmatheval_vars->values[v] = mv_v_i->value.value;
+		libmatheval_vars->values[v] = monitor_value_double(mv_v_i);
 	}
 
 	return rb_monitor_op_value0(f, libmatheval_vars, monitor);
@@ -670,28 +626,18 @@ rb_monitor_op_vector(void *f,
 				f, op_vars, libmatheval_vars, i, monitor);
 
 		if (NULL != children[i]) {
-			sum += children[i]->value.value;
+			sum += monitor_value_double(children[i]);
 			count++;
 		}
 	} /* foreach member of vector */
 
 	if (monitor->splitop && count > 0) {
-		char string_value[64];
-
 		const double split_op_value =
 				0 == strcmp(monitor->splitop, "sum")
 						? sum
 						: sum / count;
 
-		/// @todo check if number is normal
-		/// @todo check snprintf return
-		snprintf(string_value,
-			 sizeof(string_value),
-			 "%lf",
-			 split_op_value);
-
-		split_op = process_novector_monitor(string_value,
-						    split_op_value);
+		split_op = new_monitor_value(split_op_value);
 	}
 
 	return new_monitor_value_array(
@@ -745,21 +691,10 @@ rb_monitor_get_op_result(const rb_monitor_t *monitor,
 	const struct monitor_value *mv_0 =
 			rb_monitor_value_array_at(op_vars, 0);
 	if (mv_0) {
-		switch (mv_0->type) {
-		case MONITOR_VALUE_T__ARRAY:
-			ret = rb_monitor_op_vector(
-					f, op_vars, libmatheval_vars, monitor);
-			break;
-		case MONITOR_VALUE_T__VALUE:
-			ret = rb_monitor_op_value(
-					f, op_vars, libmatheval_vars, monitor);
-			break;
-		default:
-			/// @todo error treatment
-			rdlog(LOG_CRIT, "Unknown operation monitor type!");
-			ret = NULL;
-			break;
-		};
+		ret = ((MONITOR_VALUE_T__ARRAY == mv_0->type)
+				       ? rb_monitor_op_vector
+				       : rb_monitor_op_value)(
+				f, op_vars, libmatheval_vars, monitor);
 	}
 
 	delete_libmatheval_vars(libmatheval_vars);
@@ -785,167 +720,4 @@ process_sensor_monitor(struct process_sensor_monitor_ctx *process_ctx,
 		rdlog(LOG_CRIT, "Unknown monitor type: %u", monitor->type);
 		return NULL;
 	}; /* Switch monitor type */
-}
-
-/** @note our way to save a SNMP string vector in libmatheval_array is:
-    names:  [ ...  vector_name_0 ... vector_name_(N)     vector_name   ... ]
-    values: [ ...     number0    ...    number(N)      split_op_result ... ]
-*/
-
-/** Process a no-vector monitor
-  @param monitor Monitor to process
-  @param value_buf Value in text format
-  @param value Value in double format
-*/
-static struct monitor_value *
-process_novector_monitor(const char *value_buf, double value) {
-	struct monitor_value *mv = NULL;
-
-	rd_calloc_struct(&mv,
-			 sizeof(*mv),
-			 -1,
-			 value_buf,
-			 &mv->value.string_value,
-			 RD_MEM_END_TOKEN);
-
-	if (mv) {
-#ifdef MONITOR_VALUE_MAGIC
-		mv->magic = MONITOR_VALUE_MAGIC; // just sanity check
-#endif
-		mv->type = MONITOR_VALUE_T__VALUE;
-		mv->value.value = value;
-	} else {
-		rdlog(LOG_ERR,
-		      "Couldn't allocate monitor value (out of "
-		      "memory?)");
-		/// @todo memory management
-	}
-
-	return mv;
-}
-
-/** Count the number of elements of a vector response
-  @param haystack String of values
-  @param splittok Token that sepparate values
-  @return Number of elements
-  */
-static size_t vector_elements(const char *haystack, const char *splittok) {
-	size_t ret = 1;
-	for (ret = 1; (haystack = strstr(haystack, splittok));
-	     haystack += strlen(splittok), ++ret) {
-		;
-	}
-	return ret;
-}
-
-/** Extract value of a vector
-  @param vector_values String to extract values from
-  @param splittok Split token
-  @param str_value Value in string format
-  @param str_size str_value length
-  @return Next token to iterate
-  */
-static bool extract_vector_value(const char *vector_values,
-				 const char *splittok,
-				 const char **str_value,
-				 size_t *str_size,
-				 double *value) {
-
-	const char *end_token = strstr(vector_values, splittok);
-	if (NULL == end_token) {
-		end_token = vector_values + strlen(vector_values);
-	}
-
-	*value = toDouble(vector_values);
-	if (errno != 0) {
-		const char *perrbuf = gnu_strerror_r(errno);
-		rdlog(LOG_WARNING,
-		      "Invalid double: %.*s (%s). Not counting.",
-		      (int)(end_token - vector_values),
-		      vector_values,
-		      perrbuf);
-		return false;
-	}
-
-	*str_value = vector_values;
-	*str_size = (size_t)(end_token - vector_values);
-	return true;
-}
-
-/** Process a vector monitor
-  @param monitor Monitor to process
-  @param value_buf Value to process (string format)
-  @todo this could be joint with operation on vector
-*/
-static struct monitor_value *
-process_vector_monitor(const rb_monitor_t *monitor, const char *value_buf) {
-	const size_t n_children = vector_elements(value_buf, monitor->splittok);
-	const char *tok = NULL;
-
-	struct monitor_value **children =
-			calloc(n_children, sizeof(children[0]));
-	struct monitor_value *split_op = NULL;
-	if (NULL == children) {
-		rdlog(LOG_ERR,
-		      "Couldn't allocate vector children (out of "
-		      "memory?)");
-		return NULL;
-	}
-
-	size_t mean_count = 0, count = 0;
-	double sum = 0;
-	for (count = 0, tok = value_buf; tok;
-	     tok = strstr(tok, monitor->splittok), count++) {
-		if (count > 0) {
-			tok += strlen(monitor->splittok);
-		}
-
-		const char *i_value_str = NULL;
-		size_t i_value_str_size = 0;
-		double i_value = 0;
-
-		if (0 == strcmp(tok, monitor->splittok)) {
-			rdlog(LOG_DEBUG,
-			      "Not seeing value %s(%zu)",
-			      monitor->name,
-			      count);
-			continue;
-		}
-
-		const bool get_value_rc =
-				extract_vector_value(tok,
-						     monitor->splittok,
-						     &i_value_str,
-						     &i_value_str_size,
-						     &i_value);
-
-		if (false == get_value_rc) {
-			continue;
-		}
-
-		children[count] =
-				process_novector_monitor(i_value_str, i_value);
-
-		if (NULL != children[count]) {
-			sum += i_value;
-			mean_count++;
-		}
-	}
-
-	// Last token reached. Do we have an operation to do?
-	if (NULL != monitor->splitop && mean_count > 0) {
-		char split_op_result[1024];
-		const double result = (0 == strcmp("sum", monitor->splitop))
-						      ? sum
-						      : sum / mean_count;
-
-		/// @todo check snprint result
-		snprintf(split_op_result,
-			 sizeof(split_op_result),
-			 "%lf",
-			 result);
-		split_op = process_novector_monitor(split_op_result, result);
-	}
-
-	return new_monitor_value_array(n_children, children, split_op);
 }
