@@ -19,21 +19,15 @@
 
 #pragma once
 
+#include "rb_value.h"
+
 #include <stdbool.h>
 #include <string.h>
 
 /**
- Exec a system command and puts the output in value_buf
- @param buff      Buffer to store the output
- @param buff_size Length of value_buf
- @param number    If possible, number conversion of value_buf
- @param unused    Just for snmp_solve_response compatibility
- @param command   Command to execute
- @todo see if we can join with snmp_solve_response somehow
- @return               1 if number. 0 ioc.
- */
-bool system_solve_response(char *buff,
-			   size_t buff_size,
-			   double *number,
-			   void *unused,
-			   const char *command);
+  Exec a system command and puts the output in value_buf
+  @param command   Command to execute
+  @param unused    Just for snmp_solve_response compatibility
+  @return          New monitor value
+  */
+struct monitor_value *system_solve_response(const char *command, void *unused);

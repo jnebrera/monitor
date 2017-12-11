@@ -21,8 +21,9 @@
 
 #include <string.h>
 
-/// Unlikely failure of a malloc. It can be used to not compile some unused
+/// [Un]likely failure of a malloc. It can be used to not compile some unused
 /// branch if system have memory overcommit.
+#define alloc_likely(x) likely(x)
 #define alloc_unlikely(x) unlikely(x)
 
 /** Homogenize GNU-specific and XSI-compliant strerror function. Returns a

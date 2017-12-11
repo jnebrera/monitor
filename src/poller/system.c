@@ -19,48 +19,23 @@
 
 #include "system.h"
 
+#include "utils.h"
+
 #include <librd/rdlog.h>
 
 #include <ctype.h>
 #include <stdlib.h>
 
-static char *trim_end(char *buf) {
-	char *end = buf + strlen(buf) - 1;
-	while (end >= buf && isspace(*end)) {
-		end--;
-	}
-	*(end + 1) = '\0';
-	return buf;
-}
-
-bool system_solve_response(char *buff,
-			   size_t buff_size,
-			   double *number,
-			   void *unused,
-			   const char *command) {
+struct monitor_value *system_solve_response(const char *command, void *unused) {
 	(void)unused;
 
-	bool ret = false;
-	FILE *fp = popen(command, "r");
-	if (NULL == fp) {
+	FILE *command_stream = popen(command, "r");
+	if (NULL == command_stream) {
 		rdlog(LOG_ERR, "Cannot get system command.");
-		return false;
+		return NULL;
 	}
 
-	if (NULL == fgets(buff, buff_size, fp)) {
-		rdlog(LOG_ERR, "Cannot get buffer information");
-		goto err;
-	}
-
-	rdlog(LOG_DEBUG, "System response: %s", buff);
-	trim_end(buff);
-	char *endPtr;
-	*number = strtod(buff, &endPtr);
-	if (buff != endPtr) {
-		ret = true;
-	}
-
-err:
-	fclose(fp);
+	monitor_value *ret = new_monitor_value_fstream(command_stream);
+	fclose(command_stream);
 	return ret;
 }

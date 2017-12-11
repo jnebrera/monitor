@@ -18,6 +18,8 @@
 */
 
 #include "rb_snmp.h"
+#include "utils.h"
+
 #include <assert.h>
 #include <librd/rd.h>
 #include <librd/rdlog.h>
@@ -36,13 +38,11 @@ bool new_snmp_session(struct monitor_snmp_session *ss,
 	return ss->sessp != NULL;
 }
 
-bool snmp_solve_response(char *value_buf,
-			 size_t value_buf_len,
-			 double *number,
-			 struct monitor_snmp_session *session,
-			 const char *oid_string) {
+monitor_value *snmp_solve_response(const char *oid_string,
+				   struct monitor_snmp_session *session) {
 	struct snmp_pdu *pdu = snmp_pdu_create(SNMP_MSG_GET);
 	struct snmp_pdu *response = NULL;
+	monitor_value *ret = NULL;
 
 	oid entry_oid[MAX_OID_LEN];
 	size_t entry_oid_len = MAX_OID_LEN;
@@ -55,9 +55,6 @@ bool snmp_solve_response(char *value_buf,
 	for(vars=response->variables; vars; vars=vars->next_variable)
 		print_variable(vars->name,vars->name_length,vars);
 	*/
-	int ret = 0;
-	assert(value_buf);
-	assert(number);
 
 	if (status != STAT_SUCCESS) {
 		rdlog(LOG_ERR,
@@ -73,44 +70,41 @@ bool snmp_solve_response(char *value_buf,
 	}
 
 	rdlog(LOG_DEBUG,
-	      "SNMP OID %s response type %d: %s",
+	      "SNMP OID %s response type %d",
 	      oid_string,
-	      response->variables->type,
-	      value_buf);
-	const size_t effective_len =
-			RD_MIN(value_buf_len, response->variables->val_len);
+	      response->variables->type);
 
 	// See in /usr/include/net-snmp/types.h
 	switch (response->variables->type) {
 	case ASN_GAUGE:
 	case ASN_INTEGER:
-		snprintf(value_buf,
-			 value_buf_len,
-			 "%ld",
-			 *response->variables->val.integer);
-		*number = *response->variables->val.integer;
-		ret = 1;
+		ret = new_monitor_value(*response->variables->val.integer);
 		break;
-	case ASN_OCTET_STR:
-		if (effective_len == 0) {
-			ret = 0;
+	case ASN_OCTET_STR: {
+		if (unlikely(response->variables->val_len == 0)) {
+			// No return at all
 			break;
 		}
 
-		snprintf(value_buf,
-			 value_buf_len,
-			 "%.*s",
-			 (int)response->variables->val_len,
-			 response->variables->val.string);
+		char *mv_string = malloc(response->variables->val_len + 1);
+		if (alloc_unlikely(!mv_string)) {
+			goto err;
+		}
 
-		*number = strtod(value_buf, NULL);
-		ret = 1;
-		break;
+		memcpy(mv_string,
+		       response->variables->val.string,
+		       response->variables->val_len);
+		mv_string[response->variables->val_len] = '\0';
 
+		// return was a string
+		ret = new_monitor_value_strn(mv_string,
+					     response->variables->val_len);
+	} break;
 	default:
 		rdlog(LOG_WARNING,
 		      "Unknow variable type %d in SNMP response",
 		      response->variables->type);
+		break;
 	};
 
 err:
