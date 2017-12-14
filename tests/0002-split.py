@@ -168,13 +168,14 @@ class TestSplit(TestMonitor):
                           if (m['type'] == 'system' and
                               m['instance'] is not None) or
                           '0.000000' != m['value']]
+        messages = [{'kafka_messages': kafka_messages}]
 
         t_locals = locals()
         self.base_test(child_argv_str=t_locals['child'],
                        snmp_responses=None,
                        **{key: t_locals[key] for key in ['base_config',
                                                          'kafka_handler',
-                                                         'kafka_messages']})
+                                                         'messages']})
 
 if __name__ == '__main__':
     main()

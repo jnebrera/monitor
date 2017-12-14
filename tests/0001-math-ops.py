@@ -104,11 +104,13 @@ class TestBasic(TestMonitor):
           parameter.get('send', True)
         ]
 
+        messages = [{'kafka_messages': kafka_messages}]
+
         t_locals = locals()
         self.base_test(child_argv_str=t_locals['child'],
                        **{key: t_locals[key] for key in ['base_config',
                                                          'kafka_handler',
-                                                         'kafka_messages',
+                                                         'messages',
                                                          'snmp_responses']})
 
 if __name__ == '__main__':

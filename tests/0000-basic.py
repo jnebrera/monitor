@@ -89,6 +89,7 @@ class TestBasic(TestMonitor):
                            'monitor': 'monitor_' + str(i),
                            'value': '{:6f}'.format(i)
                            } for i in range(n_monitors)]
+        messages = [{'kafka_messages': kafka_messages}]
 
         # Test with no unit
         del sensor_config['monitors'][-2]['unit']
@@ -104,7 +105,7 @@ class TestBasic(TestMonitor):
                        if monitor_type is BaseTestType.SNMP else None,
                        **{key: t_locals[key] for key in ['base_config',
                                                          'kafka_handler',
-                                                         'kafka_messages']})
+                                                         'messages']})
 
 
 if __name__ == '__main__':

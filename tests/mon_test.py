@@ -145,7 +145,7 @@ class TestMonitor(TestBase):
                   child_argv_str,
                   snmp_responses,
                   kafka_handler,
-                  kafka_messages):
+                  messages):
         ''' Base monitor test
 
         Arguments:
@@ -173,10 +173,15 @@ class TestMonitor(TestBase):
                 else TestMonitor.BaseTestNoSNMPAgent(), \
                 Popen(args=child_argv + ['-c', config_file]) as child:
             try:
-                t_test = MonitorKafkaMessages(
-                                    topic_name=kafka_topic,
-                                    expected_kafka_messages=kafka_messages)
-                t_test.test(kafka_handler=kafka_handler)
+                for m in messages:
+                    try:
+                        t_test = MonitorKafkaMessages(
+                                topic_name=kafka_topic,
+                                expected_kafka_messages=m['kafka_messages'])
+                        t_test.test(kafka_handler=kafka_handler)
+                    except KeyError:
+                        pass  # No messages given
+
             finally:
                 child.send_signal(signal.SIGINT)
                 timeout_s = 5
