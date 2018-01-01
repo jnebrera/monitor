@@ -370,6 +370,28 @@ parse_rb_monitor(json_object *json_monitor,
 	return NULL;
 }
 
+rb_monitor_t *
+create_snmp_trap_rb_monitor(const char *name, json_object *enrichment) {
+	char *monitor_name = strdup(name);
+	if (alloc_unlikely(NULL == monitor_name)) {
+		rdlog(LOG_ERR, "Couldn't allocate monitor name");
+		return NULL;
+	}
+
+	rb_monitor_t *ret = calloc(1, sizeof(*ret));
+	if (alloc_unlikely(NULL == ret)) {
+		rdlog(LOG_ERR, "Couldn't allocate rb_monitor");
+		free(monitor_name);
+		return NULL;
+	}
+
+	ret->type = RB_MONITOR_T__OID;
+	ret->name = monitor_name;
+	ret->send = true;
+	ret->enrichment = enrichment;
+	return ret;
+}
+
 /** Context of sensor monitors processing */
 struct process_sensor_monitor_ctx {
 	struct monitor_snmp_session *snmp_sessp; ///< Base SNMP session
@@ -437,7 +459,7 @@ static struct monitor_value *rb_monitor_get_system_external_value(
 /// Wrapper function to transform void -> snmp_session
 static monitor_value *
 snmp_solve_response0(const char *oid_string, void *snmp_session) {
-	return snmp_solve_response(oid_string, snmp_session);
+	return snmp_query_response(oid_string, snmp_session);
 }
 
 /** Convenience function to obtain SNMP values */

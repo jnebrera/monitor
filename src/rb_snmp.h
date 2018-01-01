@@ -39,13 +39,19 @@ typedef struct monitor_snmp_session {
   */
 bool new_snmp_session(struct monitor_snmp_session *ss, netsnmp_session *params);
 
+/** Resolve SNMP variable to a monitor value
+  @param var SNMP variable
+  @return Monitor value return variable
+  */
+monitor_value *snmp_solve_variable(const struct variable_list *var);
+
 /**
   SNMP request & response adaption.
   @param oid_string String representing oid
   @param session    SNMP session to use
   @return           New monitor value
  */
-monitor_value *snmp_solve_response(const char *oid_string,
+monitor_value *snmp_query_response(const char *oid_string,
 				   struct monitor_snmp_session *session);
 
 void destroy_snmp_session(struct monitor_snmp_session *);

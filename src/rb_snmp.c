@@ -38,7 +38,44 @@ bool new_snmp_session(struct monitor_snmp_session *ss,
 	return ss->sessp != NULL;
 }
 
-monitor_value *snmp_solve_response(const char *oid_string,
+monitor_value *snmp_solve_variable(const struct variable_list *var) {
+	// See in /usr/include/net-snmp/types.h
+	monitor_value *ret = NULL;
+
+	switch (var->type) {
+	case ASN_GAUGE:
+	case ASN_INTEGER:
+		ret = new_monitor_value(*var->val.integer);
+		break;
+	case ASN_OCTET_STR: {
+		if (unlikely(var->val_len == 0)) {
+			// No return at all
+			break;
+		}
+
+		char *mv_string = malloc(var->val_len + 1);
+		if (alloc_unlikely(!mv_string)) {
+			goto err;
+		}
+
+		memcpy(mv_string, var->val.string, var->val_len);
+		mv_string[var->val_len] = '\0';
+
+		// return was a string
+		ret = new_monitor_value_strn(mv_string, var->val_len);
+	} break;
+	default:
+		rdlog(LOG_WARNING,
+		      "Unknow variable type %d in SNMP response",
+		      var->type);
+		break;
+	};
+
+err:
+	return ret;
+}
+
+monitor_value *snmp_query_response(const char *oid_string,
 				   struct monitor_snmp_session *session) {
 	struct snmp_pdu *pdu = snmp_pdu_create(SNMP_MSG_GET);
 	struct snmp_pdu *response = NULL;
@@ -50,11 +87,6 @@ monitor_value *snmp_solve_response(const char *oid_string,
 	snmp_add_null_var(pdu, entry_oid, entry_oid_len);
 	const int status = snmp_sess_synch_response(
 			session->sessp, pdu, &response);
-	/* A lot of variables. Just if we pass SNMPV3 someday.
-	struct variable_list *vars;
-	for(vars=response->variables; vars; vars=vars->next_variable)
-		print_variable(vars->name,vars->name_length,vars);
-	*/
 
 	if (status != STAT_SUCCESS) {
 		rdlog(LOG_ERR,
@@ -74,38 +106,8 @@ monitor_value *snmp_solve_response(const char *oid_string,
 	      oid_string,
 	      response->variables->type);
 
-	// See in /usr/include/net-snmp/types.h
-	switch (response->variables->type) {
-	case ASN_GAUGE:
-	case ASN_INTEGER:
-		ret = new_monitor_value(*response->variables->val.integer);
-		break;
-	case ASN_OCTET_STR: {
-		if (unlikely(response->variables->val_len == 0)) {
-			// No return at all
-			break;
-		}
-
-		char *mv_string = malloc(response->variables->val_len + 1);
-		if (alloc_unlikely(!mv_string)) {
-			goto err;
-		}
-
-		memcpy(mv_string,
-		       response->variables->val.string,
-		       response->variables->val_len);
-		mv_string[response->variables->val_len] = '\0';
-
-		// return was a string
-		ret = new_monitor_value_strn(mv_string,
-					     response->variables->val_len);
-	} break;
-	default:
-		rdlog(LOG_WARNING,
-		      "Unknow variable type %d in SNMP response",
-		      response->variables->type);
-		break;
-	};
+	/// @todo for(vars=response->variables; vars; vars=vars->next_variable)
+	ret = snmp_solve_variable(response->variables);
 
 err:
 	if (response) {

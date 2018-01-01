@@ -21,17 +21,27 @@
 
 #include "config.h"
 
+#include <librdkafka/rdkafka.h>
+
+#include <net-snmp/net-snmp-config.h>
+#include <net-snmp/net-snmp-includes.h>
+
 #include <pthread.h>
+#include <stdbool.h>
 
 /// Trap handler
 typedef struct trap_handler {
-/// private data - Do not use
+	const char *server_name; ///< Server to listen
+
+	/// private data - Do not use
 #ifndef NDEBUG
 #define TRAP_HANDLER_MAGIC 0xAA3A1CAA3A1CAA3A
 	uint64_t magic;
 #endif
-	const char *server_name; ///< Server to listen
-	pthread_t thread;	///< Associated thread
+	rd_kafka_topic_t *send_topic;
+	netsnmp_transport *snmp_transport;
+	pthread_t thread; ///< Associated thread
+	bool free_resources_at_exit;
 } trap_handler;
 
 /** Init a trap handler for listen in a given port
@@ -40,7 +50,7 @@ typedef struct trap_handler {
 function
   @warning NOT thread safe, need to be called before sessions stuff
 */
-int trap_handler_init(trap_handler *handler, const char *server_name);
+bool trap_handler_init(trap_handler *handler);
 
 /// Delete trap handler
 void trap_handler_done(trap_handler *handler);

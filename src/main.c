@@ -112,6 +112,10 @@ struct _main_info {
 #ifdef HAVE_ZOOKEEPER
 	struct rb_monitor_zk *zk;
 #endif
+	struct {
+		trap_handler handler;
+		uint16_t port;
+	} snmp_traps;
 };
 
 static int run = 1;
@@ -343,6 +347,23 @@ static json_bool parse_json_config(json_object *config,
 			      key,
 			      ENABLE_RBHTTP_CONFIGURE_OPT);
 #endif
+		} else if (0 == strcmp(key, "snmp_traps")) {
+			struct json_object *jserver_name = NULL;
+			json_object_object_get_ex(
+					val, "server_name", &jserver_name);
+			if (NULL == jserver_name) {
+				rdlog(LOG_ERR,
+				      "snmp traps object with no server name");
+				continue;
+			}
+
+			main_info->snmp_traps.handler.server_name =
+					json_object_get_string(jserver_name);
+			if (NULL == main_info->snmp_traps.handler.server_name) {
+				rdlog(LOG_ERR,
+				      "Couldn't extract JSON server name (bad "
+				      "type?)");
+			}
 		} else {
 			rdlog(LOG_ERR,
 			      "Don't know what config.%s key means.",
@@ -640,7 +661,6 @@ static void *rdkafka_delivery_reports_poll_f(void *void_worker_info) {
 
 /** Parse sensors from config file
   @param config Sensors list
-  @param sensor_json JSON config
   @return Sensors array
   */
 static rb_sensors_array_t *parse_sensors(struct json_object *config) {
@@ -649,7 +669,7 @@ static rb_sensors_array_t *parse_sensors(struct json_object *config) {
 			config, CONFIG_SENSORS_KEY, &json_sensors);
 	if (!get_rc) {
 		rdlog(LOG_ERR,
-		      "Couldn't obtain %s key. Exiting",
+		      "Couldn't obtain %s key. No polling will be done.",
 		      CONFIG_SENSORS_KEY);
 		return NULL;
 	}
@@ -663,6 +683,9 @@ static rb_sensors_array_t *parse_sensors(struct json_object *config) {
 
 	const size_t sensors_length =
 			(size_t)json_object_array_length(json_sensors);
+	if (0 == sensors_length) {
+		return NULL;
+	}
 	rb_sensors_array_t *ret = rb_sensors_array_new(sensors_length);
 
 	for (size_t i = 0; i < sensors_length; ++i) {
@@ -732,7 +755,6 @@ int main(int argc, char *argv[]) {
 			json_tokener_parse(str_default_config);
 	struct _worker_info worker_info;
 	struct _main_info main_info = {0};
-	uint16_t snmp_trap_port = 0;
 	int debug_severity = DEFAULT_LOG_LEVEL;
 	pthread_t rdkafka_delivery_reports_poll_thread;
 
@@ -781,26 +803,11 @@ int main(int argc, char *argv[]) {
 		}
 		case 't': {
 			if (!optarg) {
-				snmp_trap_port = SNMP_TRAP_PORT;
+				main_info.snmp_traps.handler.server_name =
+						"0.0.0.0:" STRINGIFY(
+								SNMP_TRAP_PORT);
 				break;
 			}
-
-			char *endptr;
-			unsigned long snmp_trap_port_ul =
-					strtoul(optarg, &endptr, 10);
-			if (snmp_trap_port_ul == 0) {
-				rdlog(LOG_ERR, "Invalid TRAP port %s", optarg);
-				exit(1);
-			}
-
-			if (snmp_trap_port_ul > (uint16_t)-1) {
-				rdlog(LOG_ERR,
-				      "Trap port greater than %" PRIu16,
-				      (uint16_t)-1);
-				exit(-1);
-			}
-
-			snmp_trap_port = (uint16_t)snmp_trap_port_ul;
 		}
 
 		default:
@@ -927,49 +934,50 @@ int main(int argc, char *argv[]) {
 #endif /* HAVE_RBHTTP */
 
 	rb_sensors_array_t *sensors_array = parse_sensors(config_file);
-	if (!sensors_array) {
-		rdlog(LOG_ERR, "Couldn't create sensor array (OOM?)");
-		exit(1);
-	}
-
-	if (snmp_trap_port) {
-
-		// netsnmp_trapd_handler *add_rc =
-		// netsnmp_add_default_traphandler(Netsnmp_Trap_Handler*
-		// handler);
-	}
 
 	init_snmp("redBorder-monitor");
-	pd_thread = malloc(sizeof(pthread_t) * main_info.threads);
-	if (!pd_thread) {
-		rdlog(LOG_CRIT,
-		      "[EE] Unable to allocate threads memory. Exiting.");
-		exit(1);
+	if (main_info.snmp_traps.handler.server_name) {
+		main_info.snmp_traps.handler.send_topic = worker_info.rkt;
+		trap_handler_init(&main_info.snmp_traps.handler);
 	}
 
-	rdlog(LOG_INFO,
-	      "Main thread started successfuly. "
-	      "Starting workers threads.");
+	if (sensors_array) {
+		pd_thread = malloc(sizeof(pthread_t) * main_info.threads);
+		if (!pd_thread) {
+			rdlog(LOG_CRIT,
+			      "[EE] Unable to allocate threads memory. "
+			      "Exiting.");
+			exit(1);
+		}
 
-	for (size_t i = 0; i < main_info.threads; ++i) {
-		pthread_create(&pd_thread[i],
-			       NULL,
-			       worker,
-			       (void *)&worker_info);
+		rdlog(LOG_INFO,
+		      "Main thread started successfuly. "
+		      "Starting workers threads.");
+
+		for (size_t i = 0; i < main_info.threads; ++i) {
+			pthread_create(&pd_thread[i],
+				       NULL,
+				       worker,
+				       (void *)&worker_info);
+		}
 	}
 
 	while (run) {
-		queue_sensors(sensors_array, &queue);
+		if (sensors_array) {
+			queue_sensors(sensors_array, &queue);
+		}
 		sleep(main_info.sleep_main);
 	}
 
 	rdlog(LOG_INFO, "Leaving, wait for workers...");
-	for (size_t i = 0; i < main_info.threads; ++i) {
-		pthread_join(pd_thread[i], NULL);
+	if (sensors_array) {
+		for (size_t i = 0; sensors_array && i < main_info.threads;
+		     ++i) {
+			pthread_join(pd_thread[i], NULL);
+		}
+		free(pd_thread);
+		rb_sensors_array_done(sensors_array);
 	}
-	free(pd_thread);
-
-	rb_sensors_array_done(sensors_array);
 
 	if (worker_info.kafka_broker) {
 		int msg_left = 0;

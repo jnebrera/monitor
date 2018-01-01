@@ -26,7 +26,7 @@ RUN apk add --no-cache builddeps && \
 		--repository \
 		http://dl-cdn.alpinelinux.org/alpine/edge/testing/ lcov && \
 	pip3 install --no-cache-dir pykafka pytest-xdist && \
-	mkdir -p /usr/local/share/snmp; ln -s /usr/{,local}/share/snmp && \
+	ln -s /usr/{,local/}share/snmp && \
 	update-ca-certificates && \
 	wget -q -O - \
 		https://github.com/eugpermar/xml-coreutils/archive/master.zip \

@@ -44,6 +44,10 @@ struct process_sensor_monitor_ctx;
 rb_monitor_t *
 parse_rb_monitor(json_object *json_monitor, json_object *sensor_enrichment);
 
+/** Create new simple monitor to print traps */
+rb_monitor_t *
+create_snmp_trap_rb_monitor(const char *name, json_object *enrichment);
+
 /** Free resources allocated by a monitor
   @param monitor Monitor to free
   */
