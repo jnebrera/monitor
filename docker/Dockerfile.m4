@@ -35,7 +35,9 @@ RUN apk add --no-cache builddeps && \
 			chmod +x config/install-sh; make; make install) && \
 		rm -rfv xml-coreutils-master
 ENV PYTEST py.test-3
-ENV PYTEST_JOBS 4',
+ENV PYTEST_JOBS 4
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["/bin/bash"]',
 COPY releasefiles /app/
 COPY mibfiles /usr/local/share/snmp/mibs/
 ENTRYPOINT /app/monitor_setup.sh)
