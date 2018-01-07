@@ -6,7 +6,8 @@
 
 Monitor agent, that sends periodically any kind of stat via kafka or http.
 
-You can monitor your system using periodical SNMP (or pure raw system commands) and send them via kafka (or HTTP POST) to a central event ingestion system.
+You can monitor your system using periodical SNMP (or pure raw system commands) and send them via kafka (or HTTP POST) to a central event ingestion system. You
+can also send SNMP traps and `monitor` will send them via kafka.
 
 ## Code Samples
 
@@ -195,6 +196,22 @@ If you want to send the JSON directly via HTP POST, you can use this conf proper
 ```
 
 Note that you need to configure with `--enable-http`
+
+### SNMP traps
+To receive SNMP traps you have to use this config properties:
+```json
+"conf": {
+  ...
+  "snmp_traps":{"server_name":"$snmp_server"}
+}
+```
+
+And v1 and v2c SNMP traps will be sent using this message format:
+```json
+{"timestamp":1515352831,"monitor":"SNMPv2-SMI::enterprises.8072.2.3.0.1.0.17","value":"1.000000","sensor_name":"UDP: [172.18.0.1]:54946->[172.18.0.4]:162","SNMPv2-MIB::sysLocation.0":"Just here"}
+{"timestamp":1515352886,"monitor":"SNMPv2-SMI::enterprises.8072.2.3.0.1","value":"1.000000","sensor_name":"UDP: [172.18.0.1]:50299->[172.18.0.4]:162","SNMPv2-SMI::enterprises.8072.2.3.2.1":123456}
+```
+
 
 ## Installation
 

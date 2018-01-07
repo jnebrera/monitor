@@ -20,6 +20,16 @@ zz_var REQUESTS_TIMEOUT 25
 zz_var KAFKA_BROKERS kafka
 zz_var KAFKA_TOPIC 'monitor'
 zz_var SENSORS_ARRAY ''
+zz_var TRAPS_PORT ''
+
+if [ ! -z "$SENSORS_ARRAY" ]; then
+	export sensors="\"sensors\":[${SENSORS_ARRAY}]"
+fi
+
+if [ ! -z "$TRAPS_PORT" ]; then
+	snmp_server="0.0.0.0:$TRAPS_PORT"
+	export snmp_traps_config="\"snmp_traps\":{\"server_name\":\"$snmp_server\"},"
+fi
 
 #
 # All RDKAFKA_ vars will be passed to librdkafka as-is

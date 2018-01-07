@@ -33,7 +33,7 @@
 typedef struct trap_handler {
 	const char *server_name; ///< Server to listen
 
-	/// private data - Do not use
+/// private data - Do not use
 #ifndef NDEBUG
 #define TRAP_HANDLER_MAGIC 0xAA3A1CAA3A1CAA3A
 	uint64_t magic;
