@@ -128,8 +128,8 @@ coverage: check_coverage $(TESTS)
 rpm: clean
 	$(MAKE) -C packaging/rpm
 
-DOCKER_OUTPUT_TAG?=gcr.io/wizzie-registry/rb_monitor
-DOCKER_OUTPUT_VERSION?=1.1.0-rc
+DOCKER_OUTPUT_TAG?=gcr.io/wizzie-registry/prozzie-monitor
+DOCKER_OUTPUT_VERSION?=1.2.0
 
 vendor_net_snmp_mib_dir=vendor/net_snmp/net_snmp/mibs
 vendor_net_snmp_mib_makefile=$(vendor_net_snmp_mib_dir)/Makefile.mib
