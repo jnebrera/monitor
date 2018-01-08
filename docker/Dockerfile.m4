@@ -21,19 +21,19 @@ define(builddeps,bash build-base ca-certificates librdkafka-dev \
 		net-snmp-libs)dnl
 dnl
 ifelse(version,devel,`
-RUN apk add --no-cache builddeps && \
-	apk add --no-cache \
+RUN apk add --no-cache builddeps
+RUN apk add --no-cache \
 		--repository \
-		http://dl-cdn.alpinelinux.org/alpine/edge/testing/ lcov && \
-	pip3 install --no-cache-dir pykafka pytest-xdist && \
-	ln -s /usr/{,local/}share/snmp && \
-	update-ca-certificates && \
-	wget -q -O - \
+		http://dl-cdn.alpinelinux.org/alpine/edge/testing/ lcov
+RUN pip3 install --no-cache-dir pykafka pytest-xdist
+RUN update-ca-certificates
+RUN wget -q -O - \
 		https://github.com/eugpermar/xml-coreutils/archive/master.zip \
 		| bsdtar -xf- && \
 		(cd xml-coreutils-master; bash ./configure --prefix=/usr; \
 			chmod +x config/install-sh; make; make install) && \
 		rm -rfv xml-coreutils-master
+RUN [ "/bin/bash", "-c", "ln -vs /usr/{,local/}share/snmp" ]
 ENV PYTEST py.test-3
 ENV PYTEST_JOBS 4
 ENTRYPOINT ["/bin/bash", "-c"]
