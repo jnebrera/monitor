@@ -124,6 +124,7 @@ monitor_value *new_monitor_value_fstream(FILE *stream) {
 		rdlog(LOG_ERR,
 		      "Cannot get buffer information: %s",
 		      gnu_strerror_r(errno));
+		free(sread.buf);
 		return NULL;
 	}
 

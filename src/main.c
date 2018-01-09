@@ -937,7 +937,7 @@ int main(int argc, char *argv[]) {
 
 	rb_sensors_array_t *sensors_array = parse_sensors(config_file);
 
-	init_snmp("redBorder-monitor");
+	init_snmp("monitor");
 	if (main_info.snmp_traps.handler.server_name) {
 		main_info.snmp_traps.handler.send_topic = worker_info.rkt;
 		trap_handler_init(&main_info.snmp_traps.handler);
@@ -980,6 +980,11 @@ int main(int argc, char *argv[]) {
 		free(pd_thread);
 		rb_sensors_array_done(sensors_array);
 	}
+
+	if (main_info.snmp_traps.handler.server_name) {
+		trap_handler_done(&main_info.snmp_traps.handler);
+	}
+	snmp_shutdown("monitor");
 
 	if (worker_info.kafka_broker) {
 		int msg_left = 0;
