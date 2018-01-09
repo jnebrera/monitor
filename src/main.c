@@ -553,8 +553,7 @@ static int worker_process_sensor_send_array(struct _worker_info *worker_info,
 				rdlog(LOG_ERR,
 				      "[Kafka] Cannot produce kafka message: "
 				      "%s",
-				      rd_kafka_err2str(rd_kafka_errno2err(
-						      errno)));
+				      rd_kafka_err2str(rd_kafka_last_error()));
 			}
 		} /* if kafka */
 
@@ -761,6 +760,9 @@ int main(int argc, char *argv[]) {
 	memset(&worker_info, 0, sizeof(worker_info));
 	worker_info.rk_conf = rd_kafka_conf_new();
 	worker_info.rkt_conf = rd_kafka_topic_conf_new();
+
+	// Default to librdkafka pre-0.11 behavior:
+	rd_kafka_conf_set(worker_info.rk_conf, "linger.ms", "1000", NULL, 0);
 
 	pthread_t *pd_thread = NULL;
 	rd_fifoq_t queue;
