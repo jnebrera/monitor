@@ -36,6 +36,6 @@ struct monitor_value *system_solve_response(const char *command, void *unused) {
 	}
 
 	monitor_value *ret = new_monitor_value_fstream(command_stream);
-	fclose(command_stream);
+	pclose(command_stream);
 	return ret;
 }
