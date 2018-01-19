@@ -280,6 +280,7 @@ bool new_monitor_value_array_from_string(monitor_value *mv,
 		mv->array.split_op_result = new_monitor_value(result);
 	}
 
+	free(src_str.buf);
 	return true;
 }
 
