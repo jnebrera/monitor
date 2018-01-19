@@ -64,7 +64,7 @@ typedef struct rb_array rb_sensors_array_t;
 #define rb_sensors_array_new(sz) rb_array_new(sz)
 
 /** Destroy a sensors array */
-#define rb_sensors_array_done(array) rb_array_done(array)
+void rb_sensors_array_done(rb_sensors_array_t *array);
 
 /** Checks if a sensor array is full */
 #define rb_sensors_array_full(array) rb_array_full(array)

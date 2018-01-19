@@ -41,3 +41,10 @@ static __attribute__((unused)) const char *gnu_strerror_r(int t_errno) {
 	return strerror_r(t_errno, buffer, sizeof(buffer));
 #endif
 }
+
+static void *const_cast(const void *a) __attribute((unused));
+static void *const_cast(const void *a) {
+	void *ret;
+	memcpy(&ret, &a, sizeof(ret));
+	return ret;
+}

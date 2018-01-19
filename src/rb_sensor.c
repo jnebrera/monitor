@@ -218,6 +218,8 @@ static bool sensor_parse_snmp(rb_sensor_t *sensor, json_object *sensor_info) {
 		// No SNMP in this sensor
 		return true;
 	}
+	const char *peername = PARSE_CJSON_CHILD_STR(
+			sensor_info, "sensor_ip", "localhost:161");
 
 	/// @TODO do this need to live after snmp_sess creation?
 	netsnmp_session sess_config;
@@ -233,11 +235,9 @@ static bool sensor_parse_snmp(rb_sensor_t *sensor, json_object *sensor_info) {
 							rb_sensor_name(sensor))
 				     : SNMP_VERSION_2c;
 
+	sess_config.community = const_cast(community);
 	sess_config.community_len = strlen(community);
-	/// copying this way because of lack of const qualifier
-	memcpy(&sess_config.community,
-	       &community,
-	       sizeof(sess_config.community));
+	sess_config.peername = const_cast(peername);
 
 	UPDATE_MEMBER(sess_config,
 		      retries,
@@ -249,16 +249,6 @@ static bool sensor_parse_snmp(rb_sensor_t *sensor, json_object *sensor_info) {
 		      PARSE_CJSON_CHILD_INT64,
 		      sensor_info,
 		      "timeout");
-	/// @TODO do we need to duplicate string?
-	UPDATE_MEMBER(sess_config,
-		      peername,
-		      PARSE_CJSON_CHILD_DUP_STR,
-		      sensor_info,
-		      "sensor_ip");
-
-	if (NULL == sess_config.peername) {
-		sess_config.peername = "localhost:161";
-	}
 
 	return new_snmp_session(&sensor->snmp_sess, &sess_config);
 }
@@ -327,4 +317,12 @@ void rb_sensor_put(rb_sensor_t *sensor) {
 	if (0 == ATOMIC_OP(sub, fetch, &sensor->refcnt, 1)) {
 		sensor_done(sensor);
 	}
+}
+
+void rb_sensors_array_done(rb_sensors_array_t *sarray) {
+	for (size_t i = 0; i < sarray->count; ++i) {
+		rb_sensor_t *sensor = sarray->elms[i];
+		rb_sensor_put(sensor);
+	}
+	rb_array_done(sarray);
 }
