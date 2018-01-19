@@ -12,8 +12,8 @@ RUN apk add --no-cache librdkafka zlib
 # ncurses - expat: deps for xml-coreutils
 # net-snmp-libs only for MIBS
 define(builddeps,bash build-base ca-certificates librdkafka-dev \
-		libarchive-tools zlib-dev openssl cgdb valgrind \
-		bsd-compat-headers git m4 file guile-dev \
+		libarchive-tools zlib-dev openssl cgdb \
+		bsd-compat-headers git m4 musl-dbg file guile-dev \
 		ncurses-dev expat-dev slang-dev python3-dev py3-snmp py3-pytest \
 		net-snmp-libs)dnl
 dnl
@@ -22,6 +22,9 @@ RUN apk add --no-cache builddeps
 RUN apk add --no-cache \
 		--repository \
 		http://dl-cdn.alpinelinux.org/alpine/edge/testing/ lcov
+RUN apk add --no-cache \
+		--repository \
+		http://dl-cdn.alpinelinux.org/alpine/edge/main/ valgrind
 RUN pip3 install --no-cache-dir pykafka pytest-xdist
 RUN update-ca-certificates
 RUN wget -q -O - \

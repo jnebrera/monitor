@@ -59,8 +59,22 @@ clean: bin-clean
 install: bin-install
 
 print_tests_results = tests/print_tests_results.bash $(1) $(TESTS_PY:.py=)
-run_valgrind = echo "$(MKL_YELLOW) Generating $(2) $(MKL_CLR_RESET)" && $(VALGRIND) --tool=$(1) $(SUPPRESSIONS_VALGRIND_ARG) --xml=yes \
-					--xml-file=$(2) $(3) >/dev/null 2>&1
+
+# Macro for run valgrind.
+# Arguments:
+#  - Valgrind arguments
+#  - Output XML file
+#  - Python test file
+run_valgrind = echo "$(MKL_YELLOW) Generating $(2) $(MKL_CLR_RESET)" && \
+			$(PYTEST) \
+				$(pytest_jobs_arg) \
+				--child='valgrind \
+						 $(1) \
+			             $(SUPPRESSIONS_VALGRIND_ARG) \
+			             --child-silent-after-fork=yes \
+			             --xml=yes \
+			             --xml-file=$(2)' \
+			    $(3)
 
 clang-format-files = $(wildcard src/*.c src/*.h)
 clang-format:
@@ -81,7 +95,7 @@ tests: $(TESTS_XML)
 checks: $(TESTS_CHECKS_XML)
 	@$(call print_tests_results,-c)
 
-memchecks: $(TESTS_VALGRIND_XML)
+memchecks: $(TESTS_MEM_XML)
 	@$(call print_tests_results,-v)
 
 drdchecks: $(TESTS_DRD_XML)
@@ -91,13 +105,14 @@ helchecks: $(TESTS_HELGRIND_XML)
 	@$(call print_tests_results,-h)
 
 tests/%.mem.xml: tests/%.py $(BIN)
-	-@$(call run_valgrind,memcheck,"$@","./$<")
+	-@$(call run_valgrind,$(strip --tool=memcheck --show-leak-kinds=all \
+		                                         --track-origins=yes),$@,"./$<")
 
 tests/%.helgrind.xml: tests/%.py $(BIN)
-	-@$(call run_valgrind,helgrind,"$@","./$<")
+	-@$(call run_valgrind,--tool=helgrind,"$@","./$<")
 
 tests/%.drd.xml: tests/%.py $(BIN)
-	-@$(call run_valgrind,drd,"$@","./$<")
+	-@$(call run_valgrind,--tool=drd,"$@","./$<")
 
 tests/%.xml: tests/%.py $(BIN)
 	@echo "$(MKL_YELLOW) Generating $@$(MKL_CLR_RESET)"

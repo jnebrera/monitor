@@ -30,6 +30,20 @@
    ...
 }
 
+{
+   Net-snmp bug, Asterisk to handle LTO
+   Memcheck:Cond
+   fun:strlcpy
+   fun:parse
+   fun:read_module_internal*
+   ...
+   fun:netsnmp_read_module
+   fun:netsnmp_init_mib
+   fun:init_snmp
+   fun:main
+}
+
+
 # The next memory leak is controlled, it should only happens at config parsing
 {
    libmatheval memory leak when it can't create an evaluator (invalid op)
@@ -117,3 +131,38 @@
    fun:sensor_common_attrs
    fun:parse_rb_sensor
 }
+
+{
+   Librdkafka SSL leaks
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:rd_kafka_new
+   fun:main
+}
+
+{
+   Musl bug
+   Memcheck:Free
+   fun:free
+   fun:reclaim_gaps
+   fun:map_library
+   fun:load_library
+   fun:load_preload
+   fun:__dls3
+   fun:__dls2
+   obj:/lib/ld-musl-x86_64.so.1
+}
+
+{
+   Musl bugs
+   Memcheck:Leak
+   match-leak-kinds: definite,reachable
+   fun:calloc
+   ...
+   fun:__dls3
+   fun:__dls2
+   obj:/lib/ld-musl-x86_64.so.1
+}
+

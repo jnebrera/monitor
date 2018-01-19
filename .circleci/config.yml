@@ -125,6 +125,7 @@ jobs:
           ./configure --bootstrap
           make
           make checks
+          make memchecks
 
   # Test with assertions on
   assertions:
@@ -147,6 +148,7 @@ jobs:
           ./configure --bootstrap --disable-optimization --enable-coverage
           make
           make checks
+          make memchecks
           make coverage
 
 #

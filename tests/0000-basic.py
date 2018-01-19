@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from mon_test import TestMonitor, main
+from mon_test import TestMonitor, main, valgrind_handler
 from pysnmp.proto.api import v2c
 import pytest
 import enum
@@ -21,7 +21,8 @@ class TestBasic(TestMonitor):
     def test_base_monitor(self,
                           monitor_type,
                           child,
-                          kafka_handler):
+                          kafka_handler,
+                          valgrind_handler):
         ''' First monitor tests. It expects n monitors, via SNMP or system
         console call. Each monitor is called "mon_$i", and returns "$i", where
         i is a correlative number between 0 and the number of desired monitors.
@@ -105,7 +106,8 @@ class TestBasic(TestMonitor):
                        if monitor_type is BaseTestType.SNMP else None,
                        **{key: t_locals[key] for key in ['base_config',
                                                          'kafka_handler',
-                                                         'messages']})
+                                                         'messages',
+                                                         'valgrind_handler']})
 
 
 if __name__ == '__main__':

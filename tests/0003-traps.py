@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from mon_test import TestMonitor, main
+from mon_test import TestMonitor, main, valgrind_handler
 import pytest
 import enum
 
@@ -16,7 +16,11 @@ class TestTraps(TestMonitor):
         'linkUp':    (1, 3, 6, 1, 6, 3, 1, 1, 5, 4),
     }
 
-    def base_test_trap(self, messages, child, kafka_handler):
+    def base_test_trap(self,
+                       messages,
+                       child,
+                       kafka_handler,
+                       valgrind_handler):
         base_config = {'conf': {'snmp_traps': {}}}
 
         t_locals = locals()
@@ -24,7 +28,8 @@ class TestTraps(TestMonitor):
                        snmp_responses=None,
                        **{key: t_locals[key] for key in ['base_config',
                                                          'kafka_handler',
-                                                         'messages']})
+                                                         'messages',
+                                                         'valgrind_handler']})
 
     @pytest.mark.parametrize("snmp_version,enterprise_trap_oid",
                              [(snmp_v, enterprise_oid)
@@ -40,7 +45,8 @@ class TestTraps(TestMonitor):
                   child,
                   kafka_handler,
                   snmp_version,
-                  enterprise_trap_oid):
+                  enterprise_trap_oid,
+                  valgrind_handler):
         snmp_mod = api.protoModules[snmp_version]
 
         ifIndexOid = (1, 3, 6, 1, 2, 1, 2, 2, 1, 1)
@@ -92,9 +98,12 @@ class TestTraps(TestMonitor):
             'kafka_messages': [kafka_message]}
             for (p, kafka_message) in zip(parameters, kafka_messages)]
 
-        self.base_test_trap(messages, child, kafka_handler)
+        self.base_test_trap(messages, child, kafka_handler, valgrind_handler)
 
-    def test_malformed_v2_traps(self, child, kafka_handler):
+    def test_malformed_v2_traps(self,
+                                child,
+                                kafka_handler,
+                                valgrind_handler):
         pMod = api.protoModules[api.protoVersion2c]
 
         compress_selectors = [(timestamp_var, oid_var)
@@ -128,7 +137,7 @@ class TestTraps(TestMonitor):
                     for (compress_selector, trap_msg)
                     in zip(compress_selectors, trapMsgs)]
 
-        self.base_test_trap(messages, child, kafka_handler)
+        self.base_test_trap(messages, child, kafka_handler, valgrind_handler)
 
     def __trap_message(self,
                        proto_version,

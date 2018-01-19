@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from mon_test import TestMonitor, main
+from mon_test import TestMonitor, main, valgrind_handler
 from pysnmp.proto.api import v2c
 from itertools import chain, product
 import pytest
@@ -42,7 +42,8 @@ class TestSplit(TestMonitor):
                    name_split_suffix,
                    instance_prefix,
                    split_op,
-                   kafka_handler):
+                   kafka_handler,
+                   valgrind_handler):
         split_tok = ';'
 
         # Configuration in sensor/monitor that must be forwarded to kafka
@@ -175,7 +176,8 @@ class TestSplit(TestMonitor):
                        snmp_responses=None,
                        **{key: t_locals[key] for key in ['base_config',
                                                          'kafka_handler',
-                                                         'messages']})
+                                                         'messages',
+                                                         'valgrind_handler']})
 
 if __name__ == '__main__':
     main()

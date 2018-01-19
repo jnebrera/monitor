@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from mon_test import TestMonitor, main
+from mon_test import TestMonitor, main, valgrind_handler
 from pysnmp.proto.api import v2c
 from itertools import chain
 import pytest
@@ -16,7 +16,8 @@ class TestBasic(TestMonitor):
     def test_base(self,
                   child,
                   send_base_vars,
-                  kafka_handler):
+                  kafka_handler,
+                  valgrind_handler):
         ''' Test for math operations '''
         n0, n1 = 3, 5
         test_numbers = (n0, n1)
@@ -111,7 +112,8 @@ class TestBasic(TestMonitor):
                        **{key: t_locals[key] for key in ['base_config',
                                                          'kafka_handler',
                                                          'messages',
-                                                         'snmp_responses']})
+                                                         'snmp_responses',
+                                                         'valgrind_handler']})
 
 if __name__ == '__main__':
     main()

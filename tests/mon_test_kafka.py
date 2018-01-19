@@ -4,6 +4,7 @@ import pykafka.common
 import itertools
 import json
 from pykafka import KafkaClient
+from pytest import approx
 
 
 class KafkaHandler(object):
@@ -41,7 +42,15 @@ class KafkaHandler(object):
                 if value is None:
                     assert(dimension not in message)
                 else:
-                    assert(message[dimension] == value)
+                    try:
+                        floats = (float(message[dimension]), float(value))
+                    except ValueError:
+                        # No floats, compare string
+                        assert(message[dimension] == value)
+                    else:
+                        # Floats, compare as them. Lower precision need for
+                        # valgring
+                        assert(floats[0] == approx(floats[1], rel=1e-5))
 
     def check_kafka_messages(self,
                              check_messages_callback,
