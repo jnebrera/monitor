@@ -239,6 +239,8 @@ static void send_snmp_trap_pdu(trap_handler *this, const netsnmp_pdu *pdu) {
 		json_object *sensor_name = json_object_new_string(sensor_addr);
 		enrichment = add_enrichment_object(
 				enrichment, "sensor_name", sensor_name);
+		free(sensor_addr);
+		sensor_addr = NULL;
 	}
 
 	if (pdu->command == SNMP_MSG_TRAP) {
@@ -302,6 +304,7 @@ static void send_snmp_trap_pdu(trap_handler *this, const netsnmp_pdu *pdu) {
 		rdlog(LOG_ERR, "Couldn't create monitor (OOM?)");
 		goto err;
 	}
+	enrichment = NULL;
 
 	send_array = print_monitor_value(trap_value, monitor);
 	if (alloc_unlikely(NULL == send_array)) {
