@@ -488,28 +488,16 @@ static void traps_dispatch(void *snmp_sess) {
 			return;
 		}
 		snmp_sess_perror("select error", snmp_sess);
-	} else if (count > 0) {
-		/* If there are any more events after external events,
-		 * then try SNMP events. */
-		snmp_sess_read(snmp_sess, &readfds);
 	} else {
-		snmp_sess_timeout(snmp_sess);
-	}
-}
-
-static void traps_main_loop(const trap_handler *handler, void *snmp_sess) {
-	while (1) {
-		if (handler->free_resources_at_exit) {
-			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,
-					       (int[]){0});
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, (int[]){0});
+		if (count > 0) {
+			/* If there are any more events after external events,
+			 * then try SNMP events. */
+			snmp_sess_read(snmp_sess, &readfds);
+		} else {
+			snmp_sess_timeout(snmp_sess);
 		}
-
-		traps_dispatch(snmp_sess);
-
-		if (handler->free_resources_at_exit) {
-			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,
-					       (int[]){0});
-		}
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, (int[]){0});
 	}
 }
 
@@ -519,9 +507,9 @@ static void pthread_sess_close_cb(void *sessp) {
 
 static void *handler_thread_callback(void *vtrap_handler) {
 	trap_handler *this = trap_handler_cast(vtrap_handler);
-	if (this->free_resources_at_exit) {
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, (int[]){0});
-	}
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, (int[]){0});
+	// Musl doesn't cancel a blocking select
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	netsnmp_session *trap_session = open_server(this, this->server_name);
 	if (unlikely(NULL == trap_session)) {
 		return NULL;
@@ -531,8 +519,11 @@ static void *handler_thread_callback(void *vtrap_handler) {
 
 	pthread_cleanup_push(pthread_sess_close_cb, trap_session);
 
-	traps_main_loop(this, trap_session);
-	pthread_cleanup_pop(this->free_resources_at_exit);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, (int[]){0});
+	while (1) {
+		traps_dispatch(trap_session);
+	}
+	pthread_cleanup_pop(1);
 
 	return NULL;
 }
@@ -560,4 +551,5 @@ bool trap_handler_init(trap_handler *this) {
 /// Delete trap handler
 void trap_handler_done(trap_handler *this) {
 	pthread_cancel(this->thread);
+	pthread_join(this->thread, NULL);
 }

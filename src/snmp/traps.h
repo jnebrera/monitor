@@ -41,7 +41,6 @@ typedef struct trap_handler {
 	rd_kafka_topic_t *send_topic;
 	netsnmp_transport *snmp_transport;
 	pthread_t thread; ///< Associated thread
-	bool free_resources_at_exit;
 } trap_handler;
 
 /** Init a trap handler for listen in a given port
