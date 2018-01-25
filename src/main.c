@@ -971,6 +971,9 @@ int main(int argc, char *argv[]) {
 		sleep(main_info.sleep_main);
 	}
 
+	if (main_info.snmp_traps.handler.server_name) {
+		trap_handler_done(&main_info.snmp_traps.handler);
+	}
 	rdlog(LOG_INFO, "Leaving, wait for workers...");
 	if (sensors_array) {
 		for (size_t i = 0; sensors_array && i < main_info.threads;
@@ -981,9 +984,6 @@ int main(int argc, char *argv[]) {
 		rb_sensors_array_done(sensors_array);
 	}
 
-	if (main_info.snmp_traps.handler.server_name) {
-		trap_handler_done(&main_info.snmp_traps.handler);
-	}
 	snmp_shutdown("monitor");
 
 	if (worker_info.kafka_broker) {
