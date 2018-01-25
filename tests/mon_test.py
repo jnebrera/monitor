@@ -9,12 +9,27 @@ import pytest
 import json
 import contextlib
 import select
+import shlex
 
 from snmp_agent import SNMPAgent, SNMPAgentResponder
 from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
 from pysnmp.carrier.asyncore.dgram import udp
 from pyasn1.codec.ber import encoder
 from mon_test_kafka import KafkaHandler
+
+from valgrind import ValgrindHandler
+
+
+@pytest.fixture(scope="session")
+def valgrind_handler(child):
+    # the returned fixture value will be shared for all tests needing it
+    if not shlex.split(child)[0] == "valgrind":
+        yield None
+        return
+
+    h = ValgrindHandler()
+    yield h
+    h.write_xml()
 
 
 class MonitorChild(Popen):
@@ -26,19 +41,33 @@ class MonitorChild(Popen):
         if wait_for_traps_listener_port > 0:
             self.__wait_for_trap_listener(
                                     expected_port=wait_for_traps_listener_port)
+        else:
+            # Wait for the first monitor message. If you execute test with
+            # valgrind and no kafka messages, SIGINT signal could be sent to
+            # Valgrind instead of monitor.
+            self.__wait_for_monitor_message('Compiled & running with')
+
+    def __wait_for_monitor_message(self, message_start):
+        try:
+            message_start = message_start.encode()
+        except AttributeError as e:
+            pass  # Already in utf-8
+
+        # Add initial blank
+        message_start = b' ' + message_start
+
+        for message in self.__messages(t_timeout_ms=60000):
+            if message.startswith(message_start):
+                # Delete first blank
+                return message[1:]
 
     def __wait_for_trap_listener(self, expected_port):
         ''' Wait for trap listener ready message '''
-        MESSAGE_START = b" Listening for traps on localhost:"
+        MESSAGE_START = "Listening for traps on localhost:"
+        message = self.__wait_for_monitor_message(MESSAGE_START)
+        port = int(message[len(MESSAGE_START):])
 
-        for message in self.__messages(t_timeout_ms=60000):
-            if not message.startswith(MESSAGE_START):
-                continue
-
-            port = int(message[len(MESSAGE_START):])
-
-            assert(port == expected_port)
-            break
+        assert(port == expected_port)
 
     def __messages(self, t_timeout_ms):
         ''' Obtain one monitor stdout message '''
@@ -46,13 +75,8 @@ class MonitorChild(Popen):
         poll_handler.register(self.stdout, select.POLLIN)
 
         LOG_INDEX = 4
-        while True:
-            ready_fd = [fd for fd, _ in poll_handler.poll(t_timeout_ms)]
-            if not ready_fd:
-                return
 
-            line = self.stdout.readline()
-
+        for line in self.stdout:
             # Skip log timestamp, function,...
             yield line.split(b'|')[LOG_INDEX]
 
@@ -206,6 +230,7 @@ class TestMonitor(TestBase):
             return (t_file_name, t_test_config)
 
     def base_test(self,
+                  valgrind_handler,
                   base_config,
                   child_argv_str,
                   snmp_responses,
@@ -222,7 +247,6 @@ class TestMonitor(TestBase):
           - messages: kafka messages to expect
           - kafka_handler: Kafka handler to use
         '''
-
         config_file, config = TestMonitor.__create_config_file(base_config)
         try:
             snmp_agent_port = int(
@@ -250,9 +274,15 @@ class TestMonitor(TestBase):
                               responder=SNMPAgentResponder(
                                                    port=snmp_agent_port,
                                                    responses=snmp_responses)))
+
             child = exit_stack.enter_context(
-                     MonitorChild(args=child_argv + ['-c', config_file],
-                                  wait_for_traps_listener_port=snmp_trap_port))
+                    valgrind_handler.run_child(
+                                child_cls=MonitorChild,
+                                child_args=child_argv + ['-c', config_file],
+                                wait_for_traps_listener_port=snmp_trap_port)
+                    if valgrind_handler else
+                    MonitorChild(args=child_argv + ['-c', config_file],
+                                 wait_for_traps_listener_port=snmp_trap_port))
 
             try:
                 for m in messages:
