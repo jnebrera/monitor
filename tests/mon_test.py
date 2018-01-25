@@ -308,7 +308,7 @@ class TestMonitor(TestBase):
 
             finally:
                 child.send_signal(signal.SIGINT)
-                timeout_s = 5
+                timeout_s = 60
                 child.wait(timeout_s)
 
 
