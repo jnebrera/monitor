@@ -46,7 +46,7 @@ VERSION_H_PHONY=$(VERSION_H)
 $(shell sed -i 's/$(GITVERSION)/$(actual_git_version)/g' -- Makefile.config)
 endif
 
-.PHONY: tests checks memchecks drdchecks helchecks coverage \
+.PHONY: tests checks dev-docker docker memchecks drdchecks helchecks coverage \
 	check_coverage clang-format-check $(VERSION_H_PHONY)
 
 $(VERSION_H):
@@ -116,7 +116,7 @@ tests/%.drd.xml: tests/%.py $(BIN)
 
 tests/%.xml: tests/%.py $(BIN)
 	@echo "$(MKL_YELLOW) Generating $@$(MKL_CLR_RESET)"
-	$(PYTEST) $(pytest_jobs_arg) --junitxml="$@" "./$<" >/dev/null 2>&1
+	$(PYTEST) -v $(pytest_jobs_arg) --junitxml="$@" "./$<"
 
 check_coverage:
 	@( if [[ "x$(WITH_COVERAGE)" == "xn" ]]; then \
@@ -143,7 +143,7 @@ coverage: check_coverage $(TESTS)
 rpm: clean
 	$(MAKE) -C packaging/rpm
 
-DOCKER_OUTPUT_TAG?=gcr.io/wizzie-registry/prozzie-monitor
+DOCKER_OUTPUT_TAG?=wizzieio/prozzie-monitor
 DOCKER_OUTPUT_VERSION?=1.2.0
 
 vendor_net_snmp_mib_dir=vendor/net_snmp/net_snmp/mibs
@@ -162,25 +162,20 @@ ifeq (,$(mibs_deps))
 mibs_deps=$(wildcard /usr/local/share/snmp/mibs/*.txt)
 endif
 
-DOCKER_RELEASE_FILES=$(strip rb_monitor docker/release/config.json.env \
-	docker/release/monitor_setup.sh)
-
 $(vendor_net_snmp_mib_dir)/%.txt:
 	cd $(vendor_net_snmp_mib_dir); make "$(notdir $@)"
 
-docker: docker/release/Dockerfile \
-		$(filter-out rb_monitor,$(DOCKER_RELEASE_FILES)) \
-		$(mibs_deps)
-	docker build -t $(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION) \
-		-f docker/release/Dockerfile .
+mibs: $(mibs_deps)
 
-dev-docker: docker/devel/Dockerfile
-	@docker build $(DOCKER_BUILD_PARAMETERS) docker/devel
+x-docker-build = $(strip docker build \
+	$(DOCKER_BUILD_PARAMETERS) \
+	-t $(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION) \
+	--target $1 -f docker/Dockerfile .)
 
-docker/release/Dockerfile:RELEASEFILES_ARG=--define=releasefiles='$(DOCKER_RELEASE_FILES)'
-docker/release/Dockerfile:MIBS_ARG=--define=mibfiles='$(mibs_deps)'
-%/Dockerfile: docker/Dockerfile.m4
-	mkdir -p "$(dir $@)"
-	m4 $(RELEASEFILES_ARG) $(MIBS_ARG) --define=version="$(@:docker/%/Dockerfile=%)" "$<" > "$@"
+docker: .dockerignore
+	$(call x-docker-build,release)
+
+dev-docker: .dockerignore
+	$(call x-docker-build,mon-dev)
 
 -include $(DEPS)

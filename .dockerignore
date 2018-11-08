@@ -1,20 +1,63 @@
-# Coverage files
-*.gcno
-*.gcda
-coverage.*
+# Object files
+**/*.o
+**/*.ko
+**/*.obj
+**/*.elf
 
-# Source files
-Makefile
-Makefile*
-README.md
-/config.*
-configure*
+# Precompiled Headers
+**/*.gch
+**/*.pch
 
-/example_configs
-/mklove
+# Libraries
+**/*.lib
+**/*.a
+**/*.la
+**/*.lo
 
-/src
-/tests
+# Shared objects (inc. Windows DLLs)
+**/*.dll
+**/*.so
+**/*.so.*
+**/*.dylib
+
+# Executables
+**/*.exe
+**/*.out
+**/*.app
+**/*.i*86
+**/*.x86_64
+**/*.hex
+
+# Debug files
+**/*.dSYM/
+
+# tests
+tests/*.xml
+monitor_config_????????
+monitor_topic_????????
+**/__pycache__
+
+# Coverage
+/coverage.info
+/coverage.out.html/
+**/*.gcno
+**/*.gcda
+
+# mklove
+**/*.d
+/config.h
+/Makefile.config
+/config.cache
+/config.log
+/config.log.old
+/rb_monitor
 /vendor/
-!/vendor/net_snmp/net_snmp/mibs/
 
+# Versions
+/src/version.h
+
+# No need for invalidate cache if dockerfile change
+/docker/Dockerfile
+
+# Don't want a cache invalidation in case these files change
+/.circleci

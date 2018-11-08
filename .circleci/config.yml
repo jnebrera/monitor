@@ -8,14 +8,16 @@ default_workspace: &default_workspace
 save_cache:
   - &save_cache
     save_cache:
-      key: rbm-cache-{{ .Branch }}-{{ .BuildNum }}
+      key: rbm-cache-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "docker-cache/built-images.sum" }}
       paths:
         - docker-cache/built-images.tgz
+        - docker-cache/built-images.sum
 
 restore_cache:
   - &restore_cache
     restore_cache:
       keys:
+        - rbm-cache-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}
         - rbm-cache-{{ .Branch }}-
         - rbm-cache-
 
@@ -27,7 +29,10 @@ save_docker_images:
     # Keep in sync the diff with load_docker_images
     run: |
       mkdir -p docker-cache
-      docker images  --filter "dangling=false" --format '{{.ID}} {{.Repository}} {{.Tag}}' > docker_images.newsum
+      docker images --filter "dangling=false" \
+        --format '{{.ID}} {{.Repository}} {{.Tag}}' \
+        | grep 'monitor-dev\|wizzieio/prozzie-monitor\|spotify/kafka' | sort \
+        > docker_images.newsum
       if ! diff docker_images.newsum docker-cache/built-images.sum; then
         mv docker_images.newsum docker-cache/built-images.sum
         docker_images=$(docker images --filter 'dangling=false' \
@@ -45,7 +50,7 @@ load_docker_images:
     run: |
       if [[ -f docker-cache/built-images.tgz ]]; then
         zcat docker-cache/built-images.tgz | docker load;
-        docker images  --filter "dangling=false" --format '{{.ID}} {{.Repository}} {{.Tag}}' > docker-cache/built-images.sum
+        docker images --filter "dangling=false" --format '{{.ID}} {{.Repository}} {{.Tag}}' | sort > docker-cache/built-images.sum
       else
         echo "NO DOCKER CACHE";
       fi
@@ -64,25 +69,6 @@ jobs:
             test -z "$out"
 
 
-  # Build & prepare devel container
-  build_dev:
-    <<: *default_workspace
-    steps:
-      - setup_remote_docker
-      - checkout
-      # Use cached rbm images if possible
-      - *restore_cache
-      - *load_docker_images
-      # Create development environment
-      - run: apk add --no-cache make m4
-      - run:
-          environment:
-            DOCKER_BUILD_PARAMETERS: -t monitor-dev
-          command: make dev-docker
-      - *save_docker_images
-      - *save_cache
-
-
   # (Template) execute a single command in development docker
   T_dev_run: &T_dev_run
     <<: *default_workspace
@@ -91,24 +77,68 @@ jobs:
       - checkout
       - *restore_cache
       - *load_docker_images
-      - run: '[[ -f workspace.tgz ]] && tar xvzpf workspace.tgz || true'
+      # Create development environment
+      - run: apk add --no-cache make git
+      # Don't want to send docker images
+      - run: printf '/docker-cache/\n' >> .dockerignore
       # sed: Don't want thread-safety test because musl bug
       - run: sed -i 's%\$(TESTS_\(DRD\|HELGRIND\)_XML)%%g' Makefile
-      # rm: Bug caused by LTO, mem checks are impossible & unknown failure
-      - run: rm -f tests/0013-mem.c tests/0005-monitors_split_op_blanks.c;
+
+      # Build development container
+      - run:
+          environment:
+            DOCKER_OUTPUT_TAG: monitor-dev
+            DOCKER_OUTPUT_VERSION: latest
+          command: make dev-docker
+
+      # Build binary
+      - run: env DOCKER_OUTPUT_VERSION="test-${CIRCLE_JOB}" make docker
+
+      # Get binary artifacts
+      - run: |
+          docker run --rm --entrypoint tar \
+            "wizzieio/prozzie-monitor:test-${CIRCLE_JOB}" \
+            c rb_monitor Makefile.config \
+            | tar xv;
+
+      # Get coverage artifacts (if any). Need to eval for proper arguments
+      # treatment (spaces, quotes, ...)
+      - run: |
+          if [[ "${CIRCLE_JOB}" == coverage ]]; then
+            BUILDER_ID="$(eval docker build \
+              ${DOCKER_BUILD_PARAMETERS} \
+              --target mon-builder \
+              -f docker/Dockerfile -q .)"
+            docker run --rm --entrypoint find "$BUILDER_ID" \
+              . -name '*.gcno' -exec tar c {} \+ \
+              | tar xv;
+          fi
       # Launch test kafka
       - run: docker run -d --hostname kafka --name kafka spotify/kafka;
       # Launch test container
       - run: docker run -dt --link kafka --name dev-container monitor-dev;
-      # Copy environment
-      - run: docker cp . dev-container:/app;
+      # Delete binary generation and copy artifacts
+      - run: >
+          sed -i '/^$(BIN):/,/!^\t/ {s%$(BIN):.*%$(BIN):\n\ttouch "$@"%; /^\t/d}'
+          -- mklove/Makefile.base
+      - run: docker cp ./ dev-container:/app
       # Actual commands run. Exit 255 will stop iteration
+      # Redirect to file and read it is a busybox xargs workaround: it does not
+      # return error code if executed command exit with 255!
       - run: |
-             printf "%s\n" "${docker_cmds}" | tr '\n' '\0' | \
-               xargs -I {} -0 -t -n 1 docker exec dev-container sh -c '{} || exit 255'
+            printf "%s\n" "${docker_cmds}" | \
+              xargs -I {} -t -n 1 \
+              docker exec -e PYTEST="$PYTEST" -e PYTEST_JOBS="$PYTEST_JOBS" \
+                dev-container sh -c '{} || exit 255' | tee xargs_out.txt;
+            grep 'xargs: .*: exited with status 255; aborting' -- xargs_out.txt \
+              && exit 1 \
+              || rm -f -- xargs_out.txt;
+
       # Collect results
       - run: docker cp dev-container:/app/tests/ /tmp
       - run: docker cp dev-container:/app/coverage.out.html . || mkdir -p coverage.out.html
+      - *save_docker_images
+      - *save_cache
       - store_test_results:
           path: /tmp/tests
       - store_artifacts:
@@ -122,8 +152,6 @@ jobs:
       - PYTEST_JOBS: 16
       - PYTEST: py.test-3
       - docker_cmds: |
-          ./configure --bootstrap
-          make
           make checks
           make memchecks
 
@@ -134,7 +162,6 @@ jobs:
       - PYTEST_JOBS: 16
       - PYTEST: py.test-3
       - docker_cmds: |
-          ./configure --bootstrap
           sed -i 's/-DNDEBUG//g' Makefile.config
           make
           make checks
@@ -144,9 +171,8 @@ jobs:
     environment:
       - PYTEST_JOBS: 16
       - PYTEST: py.test-3
+      - DOCKER_BUILD_PARAMETERS: --build-arg CONFIGURE_OPTIONS='--disable-optimization --enable-coverage'
       - docker_cmds: |
-          ./configure --bootstrap --disable-optimization --enable-coverage
-          make
           make checks
           make memchecks
           make coverage
@@ -188,18 +214,9 @@ workflows:
     jobs:
       - clang-format
 
-      # Base docker for build and tests application
-      - build_dev
-
-      - assertions:
-          requires:
-            - build_dev
-      - release:
-          requires:
-            - build_dev
-      - coverage:
-          requires:
-            - build_dev
+      - assertions
+      - release
+      - coverage
       #- checks:
       #    requires:
       #      - make
