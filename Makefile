@@ -144,7 +144,7 @@ rpm: clean
 	$(MAKE) -C packaging/rpm
 
 DOCKER_OUTPUT_TAG?=wizzieio/prozzie-monitor
-DOCKER_OUTPUT_VERSION?=1.2.0
+DOCKER_OUTPUT_VERSION?=$(actual_git_version)
 
 vendor_net_snmp_mib_dir=vendor/net_snmp/net_snmp/mibs
 vendor_net_snmp_mib_makefile=$(vendor_net_snmp_mib_dir)/Makefile.mib
