@@ -104,4 +104,4 @@ COPY --from=mon-builder  \
 	/app/rb_monitor \
 	/app/
 
-ENTRYPOINT /app/monitor_setup.sh
+ENTRYPOINT ["/app/monitor_setup.sh"]
