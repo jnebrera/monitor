@@ -93,6 +93,8 @@ jobs:
 
       # Build binary
       - run: env DOCKER_OUTPUT_VERSION="test-${CIRCLE_JOB}" make docker
+      - run: env DOCKER_OUTPUT_VERSION="test-${CIRCLE_JOB}" make gdb-docker
+      - run: env DOCKER_OUTPUT_VERSION="test-${CIRCLE_JOB}" make valgrind-docker
 
       # Get binary artifacts
       - run: |
