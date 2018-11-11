@@ -105,3 +105,13 @@ COPY --from=mon-builder  \
 	/app/
 
 ENTRYPOINT ["/app/monitor_setup.sh"]
+
+FROM release AS bin_wrapper
+ARG INSTALL_PKGS
+ARG EXEC_WRAPPER
+
+COPY --from=mon-builder /app/ /app/
+
+RUN apk add --no-cache ${INSTALL_PKGS} && \
+	sed -i "s%^exec \./rb_monitor%exec ${EXEC_WRAPPER} ./rb_monitor%" \
+	-- /app/monitor_setup.sh

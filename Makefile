@@ -46,8 +46,9 @@ VERSION_H_PHONY=$(VERSION_H)
 $(shell sed -i 's/$(GITVERSION)/$(actual_git_version)/g' -- Makefile.config)
 endif
 
-.PHONY: tests checks dev-docker docker memchecks drdchecks helchecks coverage \
-	check_coverage clang-format-check $(VERSION_H_PHONY)
+.PHONY: tests checks dev-docker docker gdb-docker drdchecks helchecks coverage \
+	check_coverage clang-format-check memchecks valgrind-docker \
+	$(VERSION_H_PHONY)
 
 $(VERSION_H):
 	@echo "static const char *monitor_version=\"$(actual_git_version)\";" > $@
@@ -169,13 +170,26 @@ mibs: $(mibs_deps)
 
 x-docker-build = $(strip docker build \
 	$(DOCKER_BUILD_PARAMETERS) \
-	-t $(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION) \
+	-t $2 \
 	--target $1 -f docker/Dockerfile .)
 
 docker: .dockerignore
-	$(call x-docker-build,release)
+	$(call x-docker-build,release,$(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION))
 
 dev-docker: .dockerignore
-	$(call x-docker-build,mon-dev)
+	$(call x-docker-build,mon-dev,$(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION))
+
+gdb-docker: DOCKER_BUILD_PARAMETERS=$(strip --build-arg INSTALL_PKGS=cgdb \
+								      --build-arg EXEC_WRAPPER='cgdb --args')
+gdb-docker:
+	$(call x-docker-build,bin_wrapper, \
+		$(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION)-gdb)
+
+valgrind-docker: DOCKER_BUILD_PARAMETERS=$(strip \
+										   --build-arg INSTALL_PKGS=valgrind \
+										   --build-arg EXEC_WRAPPER=valgrind)
+valgrind-docker:
+	$(call x-docker-build,bin_wrapper, \
+		$(DOCKER_OUTPUT_TAG):$(DOCKER_OUTPUT_VERSION)-valgrind)
 
 -include $(DEPS)
